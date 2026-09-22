@@ -1,0 +1,260 @@
+{
+  "meta": {
+    "schemaVersion": 1,
+    "appVersion": "0.1.0",
+    "restaurantName": "El Mexican Restaurant",
+    "updatedAt": "2026-09-21T20:45:00-05:00"
+  },
+  "settings": {
+    "weekStartsOn": 1,
+    "includeOptionalSupportByDefault": true,
+    "defaultFirstShiftEnd": "15:30",
+    "defaultSecondShiftStart": "15:00",
+    "staggerMinutes": 90
+  },
+  "businessHours": {
+    "monday": { "open": "11:00", "close": "20:00" },
+    "tuesday": { "open": "11:00", "close": "20:00" },
+    "wednesday": { "open": "11:00", "close": "20:00" },
+    "thursday": { "open": "11:00", "close": "20:00" },
+    "friday": { "open": "11:00", "close": "21:00" },
+    "saturday": { "open": "08:00", "close": "21:00" },
+    "sunday": { "open": "08:00", "close": "20:00" }
+  },
+  "coverageTemplates": {
+    "monday": [
+      { "id": "mon-server-am", "role": "server", "label": "First shift", "start": "11:00", "end": "15:30", "required": true },
+      { "id": "mon-server-pm", "role": "server", "label": "Second shift", "start": "15:00", "end": "CLOSE", "required": true }
+    ],
+    "tuesday": [
+      { "id": "tue-server-am", "role": "server", "label": "First shift", "start": "11:00", "end": "15:30", "required": true },
+      { "id": "tue-server-pm", "role": "server", "label": "Second shift", "start": "15:00", "end": "CLOSE", "required": true }
+    ],
+    "wednesday": [
+      { "id": "wed-server-am", "role": "server", "label": "First shift", "start": "11:00", "end": "15:30", "required": true },
+      { "id": "wed-server-pm", "role": "server", "label": "Second shift", "start": "15:00", "end": "CLOSE", "required": true }
+    ],
+    "thursday": [
+      { "id": "thu-server-am", "role": "server", "label": "First shift", "start": "11:00", "end": "15:30", "required": true },
+      { "id": "thu-server-pm", "role": "server", "label": "Second shift", "start": "15:00", "end": "CLOSE", "required": true }
+    ],
+    "friday": [
+      { "id": "fri-server-am", "role": "server", "label": "First shift", "start": "11:00", "end": "15:30", "required": true },
+      { "id": "fri-server-pm1", "role": "server", "label": "Second shift · primary", "start": "15:00", "end": "CLOSE", "required": true },
+      { "id": "fri-server-pm2", "role": "server", "label": "Second shift · staggered", "start": "16:30", "end": "CLOSE", "required": true },
+      { "id": "fri-support-pm", "role": "dish_runner", "label": "Busy support", "start": "16:30", "end": "CLOSE", "required": false }
+    ],
+    "saturday": [
+      { "id": "sat-server-am1", "role": "server", "label": "First shift · primary", "start": "08:00", "end": "15:30", "required": true },
+      { "id": "sat-server-am2", "role": "server", "label": "First shift · staggered", "start": "09:30", "end": "15:30", "required": true },
+      { "id": "sat-support-am", "role": "dish_runner", "label": "Morning support", "start": "09:30", "end": "15:30", "required": false },
+      { "id": "sat-server-pm1", "role": "server", "label": "Second shift · primary", "start": "15:00", "end": "CLOSE", "required": true },
+      { "id": "sat-server-pm2", "role": "server", "label": "Second shift · staggered", "start": "16:30", "end": "CLOSE", "required": true },
+      { "id": "sat-support-pm", "role": "dish_runner", "label": "Evening support", "start": "16:30", "end": "CLOSE", "required": false }
+    ],
+    "sunday": [
+      { "id": "sun-server-am1", "role": "server", "label": "First shift · primary", "start": "08:00", "end": "15:30", "required": true },
+      { "id": "sun-server-am2", "role": "server", "label": "First shift · staggered", "start": "09:30", "end": "15:30", "required": true },
+      { "id": "sun-support-am", "role": "dish_runner", "label": "Morning support", "start": "09:30", "end": "15:30", "required": false },
+      { "id": "sun-server-pm1", "role": "server", "label": "Second shift · primary", "start": "15:00", "end": "CLOSE", "required": true },
+      { "id": "sun-server-pm2", "role": "server", "label": "Second shift · staggered", "start": "16:30", "end": "CLOSE", "required": true },
+      { "id": "sun-support-pm", "role": "dish_runner", "label": "Evening support", "start": "16:30", "end": "CLOSE", "required": false }
+    ]
+  },
+  "priorityRules": [
+    {
+      "id": "weekend-am-server-priority",
+      "label": "Weekend morning servers",
+      "days": ["saturday", "sunday"],
+      "role": "server",
+      "startBefore": "12:00",
+      "tiers": [
+        ["emp_david", "emp_yazmin", "emp_lily"],
+        ["emp_beto", "emp_danielle"]
+      ]
+    },
+    {
+      "id": "weekend-am-support-priority",
+      "label": "Weekend morning dishwasher / runner",
+      "days": ["saturday", "sunday"],
+      "role": "dish_runner",
+      "startBefore": "12:00",
+      "tiers": [
+        ["emp_victoria"],
+        ["emp_osvaldo"],
+        ["emp_kelly"]
+      ]
+    }
+  ],
+  "employees": [
+    {
+      "id": "emp_beto",
+      "name": "Beto",
+      "active": true,
+      "roles": ["server"],
+      "normalDuties": ["runs_own_food", "light_dish"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "monday": ["ALL"], "tuesday": ["ALL"], "wednesday": ["ALL"], "thursday": ["ALL"], "friday": ["ALL"], "saturday": ["ALL"], "sunday": ["ALL"]
+      },
+      "flexibility": "high",
+      "minWeeklyHours": 40,
+      "maxWeeklyHours": null,
+      "recurringAssignments": [
+        { "day": "tuesday", "start": "OPEN", "end": "CLOSE", "role": "server", "label": "Covers owners’ day off" }
+      ],
+      "notes": "Guaranteed minimum 40 hours. Use flexibly to cover gaps and busy periods while reaching 40 hours."
+    },
+    {
+      "id": "emp_danielle",
+      "name": "Danielle",
+      "active": true,
+      "roles": ["server"],
+      "normalDuties": ["runs_own_food", "light_dish"],
+      "availabilityMode": "weekly_variable",
+      "recurringAvailability": {},
+      "flexibility": "variable",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": [],
+      "notes": "Normally submits new availability each week."
+    },
+    {
+      "id": "emp_david",
+      "name": "David",
+      "active": true,
+      "roles": ["server"],
+      "normalDuties": ["runs_own_food", "light_dish"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "monday": ["PM"],
+        "friday": ["AM", "PM"],
+        "saturday": ["AM", "PM"],
+        "sunday": ["AM", "PM"]
+      },
+      "flexibility": "normal",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": []
+    },
+    {
+      "id": "emp_yazmin",
+      "name": "Yazmin",
+      "active": true,
+      "roles": ["server"],
+      "normalDuties": ["runs_own_food", "light_dish"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "thursday": ["AM"],
+        "friday": ["PM"],
+        "saturday": ["AM", "PM"],
+        "sunday": ["AM", "PM"]
+      },
+      "flexibility": "normal",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": []
+    },
+    {
+      "id": "emp_lily",
+      "name": "Lily",
+      "active": true,
+      "roles": ["server"],
+      "normalDuties": ["runs_own_food", "light_dish"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "wednesday": ["ALL"],
+        "saturday": ["AM"],
+        "sunday": ["AM"]
+      },
+      "flexibility": "high",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "constraints": { "maxWeekendMorningShifts": 1 },
+      "recurringAssignments": [],
+      "notes": "Wednesday all day. Usually available either Saturday or Sunday morning; flexible otherwise."
+    },
+    {
+      "id": "emp_yuri",
+      "name": "Yuri",
+      "active": true,
+      "roles": ["server"],
+      "normalDuties": ["runs_own_food", "light_dish"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "saturday": ["AM", "PM"],
+        "sunday": ["AM", "PM"]
+      },
+      "flexibility": "normal",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": []
+    },
+    {
+      "id": "emp_osvaldo",
+      "name": "Osvaldo",
+      "active": true,
+      "roles": ["dish_runner"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "monday": ["PM"], "tuesday": ["PM"], "wednesday": ["PM"], "thursday": ["PM"], "friday": ["PM"],
+        "saturday": ["AM", "PM"], "sunday": ["AM", "PM"]
+      },
+      "flexibility": "normal",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": [],
+      "notes": "Current interpretation: available weekends or afternoons."
+    },
+    {
+      "id": "emp_victoria",
+      "name": "Victoria",
+      "aliases": ["Vicky"],
+      "active": true,
+      "roles": ["dish_runner"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "monday": ["PM"],
+        "thursday": ["PM"],
+        "friday": ["PM"],
+        "saturday": ["AM"]
+      },
+      "flexibility": "normal",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": [],
+      "notes": "Thursday afternoon is tentative and easy to edit."
+    },
+    {
+      "id": "emp_alex",
+      "name": "Alex",
+      "active": true,
+      "roles": ["dish_runner"],
+      "availabilityMode": "recurring",
+      "recurringAvailability": {
+        "saturday": ["AM", "PM"],
+        "sunday": ["AM", "PM"]
+      },
+      "flexibility": "normal",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": []
+    },
+    {
+      "id": "emp_kelly",
+      "name": "Kelly",
+      "active": true,
+      "roles": ["dish_runner"],
+      "availabilityMode": "weekly_variable",
+      "recurringAvailability": {},
+      "flexibility": "backup",
+      "minWeeklyHours": null,
+      "maxWeeklyHours": null,
+      "recurringAssignments": [],
+      "notes": "Backup dishwasher/runner. Availability still needs to be entered."
+    }
+  ],
+  "weeklyExceptions": [],
+  "specialDateOverrides": [],
+  "scheduleHistory": []
+}

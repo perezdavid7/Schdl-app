@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#1f2937" />
+  <title>Schedule App V0.1</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="eyebrow">El Mexican Restaurant</div>
+      <h1>Schedule App <span class="version">V0.1</span></h1>
+    </div>
+    <button id="installBtn" class="ghost hidden" type="button">Install</button>
+  </header>
+
+  <nav class="tabs" aria-label="App sections">
+    <button class="tab active" data-tab="schedule">Schedule</button>
+    <button class="tab" data-tab="employees">Employees</button>
+    <button class="tab" data-tab="availability">Availability</button>
+    <button class="tab" data-tab="rules">Rules</button>
+    <button class="tab" data-tab="data">Data</button>
+  </nav>
+
+  <main>
+    <section id="tab-schedule" class="tab-panel active">
+      <div class="toolbar card">
+        <label>
+          <span>Week of</span>
+          <input id="weekDate" type="date" />
+        </label>
+        <label class="checkline">
+          <input id="includeSupport" type="checkbox" />
+          <span>Include optional dishwasher / runner support</span>
+        </label>
+        <div class="toolbar-actions">
+          <button id="generateBtn" class="primary" type="button">Generate Schedule</button>
+          <button id="printBtn" type="button">Print</button>
+          <button id="shareBtn" type="button">Share</button>
+        </div>
+      </div>
+
+      <div id="scheduleStats" class="stats"></div>
+      <div id="alerts" class="alerts"></div>
+      <div id="scheduleGrid" class="schedule-grid"></div>
+
+      <div class="card hours-card">
+        <div class="section-title-row">
+          <div>
+            <h2>Weekly Hours</h2>
+            <p>Overlapping coverage for the same employee is counted once.</p>
+          </div>
+        </div>
+        <div id="hoursTableWrap"></div>
+      </div>
+    </section>
+
+    <section id="tab-employees" class="tab-panel">
+      <div class="section-title-row">
+        <div>
+          <h2>Employees</h2>
+          <p>Permanent employee settings live here. Weekly changes belong under Availability.</p>
+        </div>
+        <button id="addEmployeeBtn" class="primary" type="button">Add Employee</button>
+      </div>
+      <div id="employeeList" class="employee-list"></div>
+    </section>
+
+    <section id="tab-availability" class="tab-panel">
+      <div class="grid-two">
+        <form id="exceptionForm" class="card form-card">
+          <h2>Weekly Exception</h2>
+          <p>Use this for a one-time change without changing the employee's normal availability.</p>
+          <label>Employee<select id="exceptionEmployee" required></select></label>
+          <label>Date<input id="exceptionDate" type="date" required /></label>
+          <label>Change
+            <select id="exceptionType">
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </label>
+          <div class="split">
+            <label>Start<input id="exceptionStart" type="time" value="08:00" required /></label>
+            <label>End<input id="exceptionEnd" type="time" value="21:00" required /></label>
+          </div>
+          <label>Note<input id="exceptionNote" type="text" placeholder="Appointment, school, can fill in, etc." /></label>
+          <button class="primary" type="submit">Save Exception</button>
+        </form>
+
+        <div class="card">
+          <h2>Saved Exceptions</h2>
+          <div id="exceptionList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-rules" class="tab-panel">
+      <div class="card">
+        <h2>Coverage Template</h2>
+        <p>The normal front-of-house schedule. Optional support can be turned on/off when generating a week.</p>
+        <div id="coverageRules"></div>
+      </div>
+
+      <div class="card">
+        <h2>Priority Rules</h2>
+        <p>Use the arrows to change the order inside a priority tier.</p>
+        <div id="priorityRules"></div>
+      </div>
+
+      <div class="grid-two">
+        <form id="overrideForm" class="card form-card">
+          <h2>Special Date Coverage</h2>
+          <p>Add extra coverage for a holiday, event, or unusually busy day.</p>
+          <label>Date<input id="overrideDate" type="date" required /></label>
+          <label>Role
+            <select id="overrideRole">
+              <option value="server">Server</option>
+              <option value="dish_runner">Dishwasher / Runner</option>
+            </select>
+          </label>
+          <label>Label<input id="overrideLabel" type="text" value="Extra holiday coverage" required /></label>
+          <div class="split">
+            <label>Start<input id="overrideStart" type="time" value="16:30" required /></label>
+            <label>End<input id="overrideEnd" type="time" value="20:00" required /></label>
+          </div>
+          <button class="primary" type="submit">Add Coverage</button>
+        </form>
+        <div class="card">
+          <h2>Special Date Rules</h2>
+          <div id="overrideList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-data" class="tab-panel">
+      <div class="card data-card">
+        <h2>Database</h2>
+        <p>The app code and restaurant data stay separate. The working copy is saved on this device, and you can export it to JSON at any time.</p>
+        <div class="data-actions">
+          <button id="exportBtn" class="primary" type="button">Export JSON Backup</button>
+          <label class="file-button">Import JSON<input id="importFile" type="file" accept="application/json,.json" /></label>
+          <button id="resetBtn" class="danger-outline" type="button">Reload Bundled Defaults</button>
+        </div>
+        <div id="dataInfo" class="data-info"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="employeeDialog">
+    <form id="employeeForm" method="dialog" class="dialog-form">
+      <div class="section-title-row">
+        <div>
+          <div class="eyebrow">Employee Profile</div>
+          <h2 id="employeeDialogTitle">Edit Employee</h2>
+        </div>
+        <button id="closeEmployeeDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="employeeId" type="hidden" />
+      <label>Name<input id="employeeName" type="text" required /></label>
+      <label class="checkline"><input id="employeeActive" type="checkbox" /><span>Active employee</span></label>
+      <label>Primary role
+        <select id="employeeRole">
+          <option value="server">Server</option>
+          <option value="dish_runner">Dishwasher / Runner</option>
+        </select>
+      </label>
+      <label>Availability type
+        <select id="employeeAvailabilityMode">
+          <option value="recurring">Recurring / normal pattern</option>
+          <option value="weekly_variable">Entered fresh each week</option>
+        </select>
+      </label>
+      <label>Flexibility
+        <select id="employeeFlexibility">
+          <option value="high">High / can fill gaps</option>
+          <option value="normal">Normal</option>
+          <option value="variable">Variable</option>
+          <option value="backup">Backup / last fill</option>
+        </select>
+      </label>
+      <div class="split">
+        <label>Minimum weekly hours<input id="employeeMinHours" type="number" min="0" step="0.5" /></label>
+        <label>Maximum weekly hours<input id="employeeMaxHours" type="number" min="0" step="0.5" /></label>
+      </div>
+      <fieldset>
+        <legend>Normal Availability</legend>
+        <p class="small">AM covers the first-shift window. PM covers the second-shift window. Select both for either shift.</p>
+        <div id="availabilityMatrix" class="availability-matrix"></div>
+      </fieldset>
+      <label>Notes<textarea id="employeeNotes" rows="3"></textarea></label>
+      <div class="dialog-actions">
+        <button id="archiveEmployeeBtn" class="danger-outline" type="button">Archive</button>
+        <button class="primary" value="save" type="submit">Save Employee</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
