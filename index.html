@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#1f2937" />
-  <title>Schedule App V0.1</title>
+  <title>Schedule App V0.2</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -12,7 +12,7 @@
   <header class="app-header">
     <div>
       <div class="eyebrow">El Mexican Restaurant</div>
-      <h1>Schedule App <span class="version">V0.1</span></h1>
+      <h1>Schedule App <span class="version">V0.2</span></h1>
     </div>
     <button id="installBtn" class="ghost hidden" type="button">Install</button>
   </header>
@@ -99,14 +99,34 @@
 
     <section id="tab-rules" class="tab-panel">
       <div class="card">
-        <h2>Coverage Template</h2>
-        <p>The normal front-of-house schedule. Optional support can be turned on/off when generating a week.</p>
+        <div class="section-title-row">
+          <div>
+            <h2>Business Hours</h2>
+            <p>Closing times are used by any coverage rule set to “Close.”</p>
+          </div>
+        </div>
+        <div id="businessHoursRules"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Coverage Template</h2>
+            <p>The normal front-of-house schedule. Every shift below can be edited, removed, or replaced.</p>
+          </div>
+          <button id="addCoverageBtn" class="primary" type="button">Add Shift</button>
+        </div>
         <div id="coverageRules"></div>
       </div>
 
       <div class="card">
-        <h2>Priority Rules</h2>
-        <p>Use the arrows to change the order inside a priority tier.</p>
+        <div class="section-title-row">
+          <div>
+            <h2>Priority Rules</h2>
+            <p>Edit who is preferred for a role, day, or shift. Employees in the same tier have equal priority.</p>
+          </div>
+          <button id="addPriorityBtn" class="primary" type="button">Add Priority Rule</button>
+        </div>
         <div id="priorityRules"></div>
       </div>
 
@@ -198,7 +218,58 @@
     </form>
   </dialog>
 
+  <dialog id="coverageDialog">
+    <form id="coverageForm" method="dialog" class="dialog-form">
+      <div class="section-title-row">
+        <div><div class="eyebrow">Scheduling Rule</div><h2 id="coverageDialogTitle">Edit Coverage</h2></div>
+        <button id="closeCoverageDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="coverageId" type="hidden" />
+      <label>Day<select id="coverageDay"></select></label>
+      <label>Label<input id="coverageLabel" type="text" required placeholder="First shift, Busy support, etc." /></label>
+      <label>Role<select id="coverageRole"><option value="server">Server</option><option value="dish_runner">Dishwasher / Runner</option></select></label>
+      <div class="split">
+        <label>Start<input id="coverageStart" type="time" required /></label>
+        <label>End time<input id="coverageEnd" type="time" /></label>
+      </div>
+      <label class="checkline"><input id="coverageToClose" type="checkbox" /><span>Run this shift until restaurant close</span></label>
+      <label class="checkline"><input id="coverageRequired" type="checkbox" checked /><span>Required coverage</span></label>
+      <p class="small">Optional coverage appears only when “Include optional dishwasher / runner support” is turned on.</p>
+      <div class="dialog-actions">
+        <button id="deleteCoverageBtn" class="danger-outline" type="button">Delete Shift</button>
+        <button class="primary" value="save" type="submit">Save Rule</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="priorityDialog">
+    <form id="priorityForm" method="dialog" class="dialog-form">
+      <div class="section-title-row">
+        <div><div class="eyebrow">Scheduling Priority</div><h2 id="priorityDialogTitle">Edit Priority Rule</h2></div>
+        <button id="closePriorityDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="priorityId" type="hidden" />
+      <label>Rule name<input id="priorityLabel" type="text" required /></label>
+      <label>Role<select id="priorityRole"><option value="server">Server</option><option value="dish_runner">Dishwasher / Runner</option></select></label>
+      <fieldset>
+        <legend>Applies on</legend>
+        <div id="priorityDays" class="day-checks"></div>
+      </fieldset>
+      <label>Only shifts starting before (optional)<input id="priorityStartBefore" type="time" /></label>
+      <fieldset>
+        <legend>Employee priority</legend>
+        <p class="small">Choose a tier for each employee. Tier 1 is preferred first. “Not in rule” removes that employee from this priority rule.</p>
+        <div id="priorityEmployeeEditor"></div>
+      </fieldset>
+      <div class="dialog-actions">
+        <button id="deletePriorityBtn" class="danger-outline" type="button">Delete Rule</button>
+        <button class="primary" value="save" type="submit">Save Priority Rule</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
+  <script src="rules-editor.js"></script>
 </body>
 </html>
