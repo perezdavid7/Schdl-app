@@ -1,8 +1,87 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.3.1';
+  const V03='0.4.0';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
+
+  function isoYmd(year,monthIndex,day){
+    return `${year}-${String(monthIndex+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  function nthWeekday(year,monthIndex,weekday,nth){
+    const first=new Date(year,monthIndex,1,12);
+    const day=1+((7+weekday-first.getDay())%7)+(nth-1)*7;
+    return isoYmd(year,monthIndex,day);
+  }
+  function lastWeekday(year,monthIndex,weekday){
+    const last=new Date(year,monthIndex+1,0,12);
+    const day=last.getDate()-((7+last.getDay()-weekday)%7);
+    return isoYmd(year,monthIndex,day);
+  }
+  function thanksgivingDate(year){ return nthWeekday(year,10,4,4); }
+
+  function usFederalHolidays(year){
+    return [
+      {key:'new_year',date:isoYmd(year,0,1),label:"New Year's Day"},
+      {key:'mlk',date:nthWeekday(year,0,1,3),label:'Martin Luther King Jr. Day'},
+      {key:'presidents',date:nthWeekday(year,1,1,3),label:"Presidents Day"},
+      {key:'memorial',date:lastWeekday(year,4,1),label:'Memorial Day'},
+      {key:'juneteenth',date:isoYmd(year,5,19),label:'Juneteenth'},
+      {key:'independence',date:isoYmd(year,6,4),label:'Independence Day'},
+      {key:'labor',date:nthWeekday(year,8,1,1),label:'Labor Day'},
+      {key:'columbus',date:nthWeekday(year,9,1,2),label:'Columbus Day'},
+      {key:'veterans',date:isoYmd(year,10,11),label:'Veterans Day'},
+      {key:'thanksgiving',date:thanksgivingDate(year),label:'Thanksgiving Day'},
+      {key:'christmas',date:isoYmd(year,11,25),label:'Christmas Day'}
+    ].map(h=>({
+      id:`system_holiday_${year}_${h.key}`,
+      date:h.date,
+      label:h.label,
+      category:'national_holiday',
+      staffingImpact:'unknown',
+      reviewStaffing:true,
+      note:'Automatic U.S. federal holiday',
+      system:true
+    }));
+  }
+
+  function recurringLocalEvents(year){
+    return [{
+      id:`system_local_${year}_gobble_gait`,
+      date:thanksgivingDate(year),
+      label:'Gobble Gait',
+      category:'local_event',
+      staffingImpact:'custom',
+      reviewStaffing:true,
+      note:'Thanksgiving morning event in front of the restaurant.',
+      system:true
+    }];
+  }
+
+  function systemEventsForYear(year){
+    return [...usFederalHolidays(year),...recurringLocalEvents(year)];
+  }
+  function calendarEventsForDate(date){
+    const year=Number(date.slice(0,4));
+    const custom=(state.specialDays||[]).filter(x=>x.date===date);
+    const system=systemEventsForYear(year).filter(x=>x.date===date);
+    return [...system,...custom];
+  }
+  function calendarEventsBetween(start,end){
+    const y1=Number(start.slice(0,4)), y2=Number(end.slice(0,4));
+    const system=[];
+    for(let y=y1;y<=y2;y++) system.push(...systemEventsForYear(y));
+    return [...system,...(state.specialDays||[])]
+      .filter(x=>x.date>=start && x.date<=end)
+      .sort((a,b)=>a.date.localeCompare(b.date)||a.label.localeCompare(b.label));
+  }
+  function categoryLabel(category){
+    return ({
+      national_holiday:'U.S. holiday',
+      local_event:'Local event',
+      holiday:'Holiday / observance',
+      other:'Other special day'
+    })[category]||'Special day';
+  }
 
   // Extend database without changing the existing storage key.
   const baseNormalize=normalizeState;
@@ -229,14 +308,14 @@
     }
     for(let d=1;d<=days;d++){
       const date=toISODate(new Date(y,m,d,12));
-      const events=(state.specialDays||[]).filter(x=>x.date===date);
+      const events=calendarEventsForDate(date);
       const cover=(state.specialDateOverrides||[]).filter(x=>x.date===date);
       const cell=document.createElement('button'); cell.type='button'; cell.className='calendar-cell';
       cell.innerHTML=`<span class="calendar-number">${d}</span>`;
       if(events.length){
         const dots=document.createElement('div'); dots.className='calendar-events';
         events.slice(0,2).forEach(ev=>{
-          const tag=document.createElement('span'); tag.className=`calendar-tag impact-${ev.staffingImpact||'unknown'}`; tag.textContent=ev.label; dots.appendChild(tag);
+          const tag=document.createElement('span'); tag.className=`calendar-tag impact-${ev.staffingImpact||'unknown'} event-${ev.category||'other'}`; tag.textContent=ev.label; dots.appendChild(tag);
         });
         if(events.length>2){ const more=document.createElement('span'); more.className='calendar-more'; more.textContent=`+${events.length-2} more`; dots.appendChild(more); }
         cell.appendChild(dots);
@@ -245,7 +324,8 @@
         const tag=document.createElement('span'); tag.className='calendar-tag coverage'; tag.textContent='Extra coverage'; dots.appendChild(tag); cell.appendChild(dots);
       }
       cell.addEventListener('click',()=>{
-        if(events.length===1) openSpecialDayDialog(events[0].id);
+        const editable=events.filter(ev=>!ev.system);
+        if(editable.length===1) openSpecialDayDialog(editable[0].id);
         else openSpecialDayDialog('',date);
       });
       root.appendChild(cell);
@@ -258,6 +338,7 @@
     $('specialDayId').value=ev?.id||'';
     $('specialDayDate').value=ev?.date||date||toISODate(new Date());
     $('specialDayLabel').value=ev?.label||'';
+    $('specialDayCategory').value=ev?.category||'local_event';
     $('specialDayStaffingImpact').value=ev?.staffingImpact||'unknown';
     $('specialDayReviewStaffing').checked=ev ? ev.reviewStaffing!==false : true;
     $('specialDayNote').value=ev?.note||'';
@@ -272,6 +353,7 @@
       id,
       date:$('specialDayDate').value,
       label:$('specialDayLabel').value.trim(),
+      category:$('specialDayCategory').value,
       staffingImpact:$('specialDayStaffingImpact').value,
       reviewStaffing:$('specialDayReviewStaffing').checked,
       note:$('specialDayNote').value.trim()
@@ -297,17 +379,23 @@
     const root=$('specialDaysList');
     if(!root || !state) return;
     const today=toISODate(new Date());
-    const list=(state.specialDays||[]).filter(x=>x.date>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,12);
-    if(!list.length){ root.innerHTML='<p>No upcoming special days yet.</p>'; return; }
+    const y=Number(today.slice(0,4));
+    const end=isoYmd(y+1,11,31);
+    const list=calendarEventsBetween(today,end).slice(0,24);
+    if(!list.length){ root.innerHTML='<p>No upcoming calendar events yet.</p>'; return; }
     root.innerHTML='';
     list.forEach(ev=>{
       const row=document.createElement('div'); row.className='special-day-row';
-      row.innerHTML=`<div><strong>${escapeHtml(ev.label)}</strong><div class="list-row-sub">${fmtDate(ev.date,{weekday:'short',month:'short',day:'numeric'})} · ${impactLabel(ev.staffingImpact)}${ev.reviewStaffing?' · Staffing review reminder':''}</div>${ev.note?`<div class="special-note">${escapeHtml(ev.note)}</div>`:''}</div>`;
+      row.innerHTML=`<div><strong>${escapeHtml(ev.label)}</strong><div class="list-row-sub">${fmtDate(ev.date,{weekday:'short',month:'short',day:'numeric'})} · ${categoryLabel(ev.category)} · ${impactLabel(ev.staffingImpact)}${ev.reviewStaffing?' · Staffing review reminder':''}</div>${ev.note?`<div class="special-note">${escapeHtml(ev.note)}</div>`:''}</div>`;
       const actions=document.createElement('div'); actions.className='special-actions';
       const cover=document.createElement('button'); cover.type='button'; cover.textContent='Add Coverage';
       cover.addEventListener('click',()=>prefillCoverage(ev));
-      const edit=document.createElement('button'); edit.type='button'; edit.textContent='Edit'; edit.addEventListener('click',()=>openSpecialDayDialog(ev.id));
-      actions.append(cover,edit); row.appendChild(actions); root.appendChild(row);
+      actions.appendChild(cover);
+      if(!ev.system){
+        const edit=document.createElement('button'); edit.type='button'; edit.textContent='Edit'; edit.addEventListener('click',()=>openSpecialDayDialog(ev.id));
+        actions.appendChild(edit);
+      }
+      row.appendChild(actions); root.appendChild(row);
     });
   }
 
@@ -347,7 +435,7 @@
     }
     root.innerHTML='';
     const start=currentSchedule.weekStart, end=addDays(start,6);
-    const events=(state.specialDays||[]).filter(x=>x.date>=start && x.date<=end);
+    const events=calendarEventsBetween(start,end);
     events.forEach(ev=>{
       const hasCoverage=(state.specialDateOverrides||[]).some(x=>x.date===ev.date);
       const div=document.createElement('div');
@@ -356,7 +444,7 @@
       let status=`${impactLabel(ev.staffingImpact)}.`;
       if(ev.reviewStaffing) status += ' Reminder: review staffing for this day.';
       if(hasCoverage) status += ' Extra coverage has already been added.';
-      div.innerHTML=`<strong>${escapeHtml(ev.label)}</strong> — ${fmtDate(ev.date,{weekday:'long',month:'short',day:'numeric'})}. ${escapeHtml(status)}`;
+      div.innerHTML=`<strong>${escapeHtml(ev.label)}</strong> <span class="event-kind">(${escapeHtml(categoryLabel(ev.category))})</span> — ${fmtDate(ev.date,{weekday:'long',month:'short',day:'numeric'})}. ${escapeHtml(status)}`;
       if(needsExtra && !hasCoverage){
         const btn=document.createElement('button'); btn.type='button'; btn.className='alert-action'; btn.textContent='Add coverage';
         btn.addEventListener('click',()=>prefillCoverage(ev));
