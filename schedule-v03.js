@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.4.4';
+  const V03='0.4.5';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -214,8 +214,8 @@
     if(oldPrint){
       const btn=oldPrint.cloneNode(true);
       oldPrint.replaceWith(btn);
-      btn.textContent='PDF / Email';
-      btn.addEventListener('click',exportWeeklySchedulePdf);
+      btn.textContent='Share Printable';
+      btn.addEventListener('click',sharePrintableSchedule);
     }
     const oldShare=$('shareBtn');
     if(oldShare){
@@ -300,6 +300,62 @@
     const names=[...new Set(shifts.map(s=>s.employee))];
     const blocks=names.map(name=>employeeWeekText(name));
     await shareText('Weekly Schedule',blocks.join('\n\n----------------\n\n'));
+  }
+
+  function buildPrintableSchedulePayload(){
+    const shifts=getWeekShifts();
+    return {
+      version:1,
+      restaurant:'El Mexican Restaurant',
+      weekStart:currentSchedule.weekStart,
+      days:DAYS.map((day,idx)=>({
+        label:DAY_LABEL[day],
+        dateLabel:fmtDate(addDays(currentSchedule.weekStart,idx),{month:'numeric',day:'numeric'})
+      })),
+      rows:state.employees.filter(e=>e.active).map(emp=>({
+        name:emp.name,
+        cells:DAYS.map((day,idx)=>{
+          const date=addDays(currentSchedule.weekStart,idx);
+          return shifts
+            .filter(s=>s.employee===emp.name && s.date===date)
+            .map(shiftText);
+        })
+      }))
+    };
+  }
+
+  function encodePrintablePayload(payload){
+    const bytes=new TextEncoder().encode(JSON.stringify(payload));
+    let binary='';
+    bytes.forEach(b=>binary+=String.fromCharCode(b));
+    return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  async function sharePrintableSchedule(){
+    if(!currentSchedule){ showToast('Generate a schedule first'); return; }
+    const payload=buildPrintableSchedulePayload();
+    const encoded=encodePrintablePayload(payload);
+    const base=new URL('print.html',window.location.href);
+    const url=`${base.origin}${base.pathname}#schedule=${encoded}`;
+    const title=`El Mexican weekly schedule - ${currentSchedule.weekStart}`;
+    const text=`Weekly schedule for the week of ${fmtDate(currentSchedule.weekStart,{month:'long',day:'numeric',year:'numeric'})}. Open this link on the work computer and choose Print Schedule.\n\n${url}`;
+    try{
+      if(navigator.share){
+        await navigator.share({title,text,url});
+      }else{
+        await navigator.clipboard.writeText(text);
+        showToast('Printable schedule link copied');
+      }
+    }catch(err){
+      if(err?.name!=='AbortError'){
+        try{
+          await navigator.clipboard.writeText(text);
+          showToast('Printable schedule link copied');
+        }catch(_){
+          prompt('Copy this printable schedule link:',url);
+        }
+      }
+    }
   }
 
   function pdfAscii(value){
