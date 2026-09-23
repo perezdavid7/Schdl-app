@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.4.0';
+  const V03='0.4.1';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -122,6 +122,7 @@
       state.specialDays ||= [];
       renderSpecialDaysList();
       renderCalendar();
+      renderNormalAvailability();
     }
   };
 
@@ -132,9 +133,80 @@
     saveState();
     wirePrintAndShare();
     wireCalendar();
+    wireAvailability();
     renderSpecialDaysList();
     renderCalendar();
+    renderNormalAvailability();
     renderSpecialWeekAlerts();
+  }
+
+  function wireAvailability(){
+    $('closeAvailabilityDialog')?.addEventListener('click',()=>$('availabilityDialog').close());
+    $('availabilityForm')?.addEventListener('submit',saveNormalAvailability);
+    buildAvailabilityEditMatrix();
+  }
+
+  function buildAvailabilityEditMatrix(){
+    const root=$('availabilityMatrixEdit');
+    if(!root) return;
+    root.innerHTML='<div></div><strong>AM</strong><strong>PM</strong>';
+    DAYS.forEach(day=>{
+      root.insertAdjacentHTML('beforeend',`<div class="dayname">${DAY_LABEL[day]}</div><label><input type="checkbox" data-edit-av-day="${day}" data-edit-av-period="AM"> AM</label><label><input type="checkbox" data-edit-av-day="${day}" data-edit-av-period="PM"> PM</label>`);
+    });
+  }
+
+  function renderNormalAvailability(){
+    const root=$('normalAvailabilityList');
+    if(!root || !state) return;
+    root.innerHTML='';
+    const employees=state.employees.filter(e=>e.active);
+    if(!employees.length){
+      root.innerHTML='<p>No active employees yet.</p>';
+      return;
+    }
+    employees.forEach(emp=>{
+      const row=document.createElement('div');
+      row.className='normal-availability-row';
+      const summary=availabilitySummary(emp);
+      row.innerHTML=`<div class="normal-availability-main"><strong>${escapeHtml(emp.name)}</strong><div class="list-row-sub">${escapeHtml(summary)}</div></div>`;
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.textContent='Edit Availability';
+      btn.addEventListener('click',()=>openAvailabilityDialog(emp.id));
+      row.appendChild(btn);
+      root.appendChild(row);
+    });
+  }
+
+  function openAvailabilityDialog(empId){
+    const emp=employeeById(empId);
+    if(!emp) return;
+    $('availabilityDialogTitle').textContent=`${emp.name} Availability`;
+    $('availabilityEmployeeId').value=emp.id;
+    $('availabilityModeEdit').value=emp.availabilityMode||'recurring';
+    qsa('[data-edit-av-day]').forEach(cb=>{
+      const tokens=emp.recurringAvailability?.[cb.dataset.editAvDay]||[];
+      cb.checked=tokens.includes('ALL')||tokens.includes(cb.dataset.editAvPeriod);
+    });
+    $('availabilityDialog').showModal();
+  }
+
+  function saveNormalAvailability(e){
+    e.preventDefault();
+    const emp=employeeById($('availabilityEmployeeId').value);
+    if(!emp) return;
+    const recurringAvailability={};
+    DAYS.forEach(day=>{
+      const selected=qsa(`[data-edit-av-day="${day}"]:checked`).map(cb=>cb.dataset.editAvPeriod);
+      if(selected.length) recurringAvailability[day]=selected;
+    });
+    emp.availabilityMode=$('availabilityModeEdit').value;
+    emp.recurringAvailability=recurringAvailability;
+    saveState();
+    renderEmployees();
+    renderNormalAvailability();
+    $('availabilityDialog').close();
+    showToast('Normal availability saved');
   }
 
   function wirePrintAndShare(){
