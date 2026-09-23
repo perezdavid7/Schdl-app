@@ -59,3 +59,7 @@ dialog{width:min(680px,calc(100vw - 24px));border:0;border-radius:18px;padding:0
 .calendar-tag.impact-may_busier{background:#fef3c7;color:#92400e}
 .calendar-tag.impact-extra_help{background:#fee2e2;color:#991b1b}
 .calendar-tag.impact-custom{background:#ede9fe;color:#5b21b6}
+
+.calendar-tag.event-national_holiday{outline:1px solid #c7d2fe}
+.calendar-tag.event-local_event{outline:1px solid #f5d0fe}
+.event-kind{font-size:.78em;font-weight:700;color:inherit;opacity:.8}
