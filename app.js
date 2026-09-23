@@ -101,6 +101,8 @@ function bindActions(){
   $('employeeForm').addEventListener('submit', saveEmployeeFromDialog);
   $('archiveEmployeeBtn').addEventListener('click', archiveEmployeeFromDialog);
   $('exceptionForm').addEventListener('submit', addException);
+  $('closeAvailabilityDialog')?.addEventListener('click', () => $('availabilityDialog').close());
+  $('availabilityForm')?.addEventListener('submit', saveAvailabilityFromDialog);
   $('overrideForm').addEventListener('submit', addOverride);
   $('exportBtn').addEventListener('click', exportJson);
   $('importFile').addEventListener('change', importJson);
@@ -119,6 +121,7 @@ function bindActions(){
 
 function renderAll(){
   renderEmployees();
+  renderNormalAvailability();
   renderExceptionEmployeeOptions();
   renderExceptions();
   renderCoverageRules();
@@ -608,6 +611,67 @@ function archiveEmployeeFromDialog(){
   emp.active=!emp.active;
   saveState(); renderAll(); $('employeeDialog').close();
   showToast(emp.active?'Employee reactivated':'Employee archived');
+}
+
+function buildAvailabilityMatrixEdit(){
+  const root=$('availabilityMatrixEdit');
+  if(!root) return;
+  root.innerHTML='<div></div><strong>AM</strong><strong>PM</strong>';
+  DAYS.forEach(day=>{
+    root.insertAdjacentHTML('beforeend',`<div class="dayname">${DAY_LABEL[day]}</div><label><input type="checkbox" data-av-edit-day="${day}" data-av-edit-period="AM"> AM</label><label><input type="checkbox" data-av-edit-day="${day}" data-av-edit-period="PM"> PM</label>`);
+  });
+}
+
+function renderNormalAvailability(){
+  const root=$('normalAvailabilityList');
+  if(!root || !state) return;
+  root.innerHTML='';
+  const employees=state.employees.filter(e=>e.active);
+  if(!employees.length){ root.innerHTML='<p>No active employees yet.</p>'; return; }
+  employees.forEach(emp=>{
+    const row=document.createElement('div');
+    row.className='normal-availability-row';
+    row.innerHTML=`
+      <div class="normal-availability-main">
+        <strong>${escapeHtml(emp.name)}</strong>
+        <div class="list-row-sub">${escapeHtml(emp.availabilityMode==='weekly_variable'?'Weekly variable':'Recurring availability')} · ${escapeHtml(availabilitySummary(emp))}</div>
+      </div>
+      <button type="button">Edit Availability</button>`;
+    row.querySelector('button').addEventListener('click',()=>openAvailabilityDialog(emp.id));
+    root.appendChild(row);
+  });
+}
+
+function openAvailabilityDialog(empId){
+  const emp=employeeById(empId);
+  if(!emp) return;
+  if(!$('availabilityMatrixEdit')?.children.length) buildAvailabilityMatrixEdit();
+  $('availabilityDialogTitle').textContent=`Edit ${emp.name}'s Availability`;
+  $('availabilityEmployeeId').value=emp.id;
+  $('availabilityModeEdit').value=emp.availabilityMode||'recurring';
+  qsa('[data-av-edit-day]').forEach(cb=>{
+    const tokens=emp.recurringAvailability?.[cb.dataset.avEditDay]||[];
+    cb.checked=tokens.includes('ALL')||tokens.includes(cb.dataset.avEditPeriod);
+  });
+  $('availabilityDialog').showModal();
+}
+
+function saveAvailabilityFromDialog(e){
+  e.preventDefault();
+  const emp=employeeById($('availabilityEmployeeId').value);
+  if(!emp) return;
+  const recurringAvailability={};
+  DAYS.forEach(day=>{
+    const selected=qsa(`[data-av-edit-day="${day}"]:checked`).map(cb=>cb.dataset.avEditPeriod);
+    if(selected.length) recurringAvailability[day]=selected;
+  });
+  emp.availabilityMode=$('availabilityModeEdit').value;
+  emp.recurringAvailability=recurringAvailability;
+  saveState();
+  renderEmployees();
+  renderNormalAvailability();
+  $('availabilityDialog').close();
+  showToast('Normal availability saved');
 }
 
 function renderExceptionEmployeeOptions(){
