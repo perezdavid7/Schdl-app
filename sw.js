@@ -1,5 +1,5 @@
-const CACHE='schedule-app-v0.2.0';
-const SHELL=['./','./index.html','./styles.css','./app.js','./rules-editor.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='schedule-app-v0.3.0';
+const SHELL=['./','./index.html','./styles.css','./app.js','./rules-editor.js','./schedule-v03.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>
   event.waitUntil(
@@ -35,7 +35,7 @@ self.addEventListener('fetch',event=>{
 
   if(event.request.mode==='navigate'){
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request,{cache:'no-store'})
         .then(res=>{
           const copy=res.clone();
           caches.open(CACHE).then(c=>c.put('./index.html',copy));
