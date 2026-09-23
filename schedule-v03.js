@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.4.5';
+  const V03='0.4.6';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -113,6 +113,7 @@
   const baseRenderSchedule=renderSchedule;
   renderSchedule=function(){
     baseRenderSchedule();
+    renderMobileWeekView();
     renderSpecialWeekAlerts();
   };
   const baseRenderAll=renderAll;
@@ -208,6 +209,56 @@
     $('availabilityDialog').close();
     showToast('Normal availability saved');
   }
+
+  let mobileSelectedDay=0;
+  let mobileWeekStart='';
+
+  function renderMobileWeekView(){
+    const grid=$('scheduleGrid');
+    if(!grid || !currentSchedule) return;
+
+    if(mobileWeekStart!==currentSchedule.weekStart){
+      mobileWeekStart=currentSchedule.weekStart;
+      const today=toISODate(new Date());
+      mobileSelectedDay=(today>=currentSchedule.weekStart && today<=addDays(currentSchedule.weekStart,6))
+        ? Math.max(0,Math.min(6,Math.round((fromISODate(today)-fromISODate(currentSchedule.weekStart))/86400000)))
+        : 0;
+    }
+
+    let strip=$('mobileWeekStrip');
+    if(!strip){
+      strip=document.createElement('div');
+      strip.id='mobileWeekStrip';
+      strip.className='mobile-week-strip';
+      strip.setAttribute('aria-label','Week days');
+      grid.insertAdjacentElement('beforebegin',strip);
+    }
+
+    strip.innerHTML='';
+    const cards=[...grid.querySelectorAll('.day-card')];
+    DAYS.forEach((day,idx)=>{
+      const date=addDays(currentSchedule.weekStart,idx);
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='mobile-week-day';
+      btn.dataset.dayIndex=String(idx);
+      btn.setAttribute('aria-selected',idx===mobileSelectedDay?'true':'false');
+      btn.innerHTML=`<span class="mobile-week-name">${DAY_LABEL[day].slice(0,3)}</span><span class="mobile-week-date">${fmtDate(date,{month:'numeric',day:'numeric'})}</span>`;
+      btn.addEventListener('click',()=>{
+        mobileSelectedDay=idx;
+        renderMobileWeekView();
+      });
+      strip.appendChild(btn);
+    });
+
+    const compact=window.matchMedia('(max-width: 900px)').matches;
+    grid.classList.toggle('mobile-day-view',compact);
+    cards.forEach((card,idx)=>card.classList.toggle('mobile-active',!compact || idx===mobileSelectedDay));
+  }
+
+  window.addEventListener('resize',()=>{
+    if(currentSchedule) renderMobileWeekView();
+  });
 
   function wirePrintAndShare(){
     const oldPrint=$('printBtn');
