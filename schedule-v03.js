@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.4.3';
+  const V03='0.4.4';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -214,7 +214,8 @@
     if(oldPrint){
       const btn=oldPrint.cloneNode(true);
       oldPrint.replaceWith(btn);
-      btn.addEventListener('click',printWeeklyGrid);
+      btn.textContent='PDF / Email';
+      btn.addEventListener('click',exportWeeklySchedulePdf);
     }
     const oldShare=$('shareBtn');
     if(oldShare){
@@ -299,6 +300,165 @@
     const names=[...new Set(shifts.map(s=>s.employee))];
     const blocks=names.map(name=>employeeWeekText(name));
     await shareText('Weekly Schedule',blocks.join('\n\n----------------\n\n'));
+  }
+
+  function pdfAscii(value){
+    return String(value??'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[–—]/g,'-')
+      .replace(/[“”]/g,'"')
+      .replace(/[‘’]/g,"'")
+      .replace(/[^\x20-\x7E]/g,'?');
+  }
+
+  function pdfEscape(value){
+    return pdfAscii(value).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');
+  }
+
+  function pdfText(x,y,size,value,bold=false,align='left'){
+    const raw=pdfAscii(value);
+    const safe=pdfEscape(raw);
+    let tx=x;
+    const estimated=raw.length*size*.50;
+    if(align==='center') tx-=estimated/2;
+    if(align==='right') tx-=estimated;
+    return `BT /${bold?'F2':'F1'} ${size} Tf 1 0 0 1 ${tx.toFixed(2)} ${y.toFixed(2)} Tm (${safe}) Tj ET\n`;
+  }
+
+  function pdfLine(x1,y1,x2,y2,width=.65){
+    return `${width} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S\n`;
+  }
+
+  function pdfFillRect(x,y,w,h,gray=.95){
+    return `${gray} g ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f 0 g\n`;
+  }
+
+  function buildWeeklySchedulePdf(){
+    const pageW=792, pageH=612, margin=24;
+    const tableW=pageW-margin*2;
+    const nameW=108;
+    const dayW=(tableW-nameW)/7;
+    const headerH=34;
+    const rowH=34;
+    const topY=532;
+    const maxRows=13;
+    const shifts=getWeekShifts();
+    const employees=state.employees.filter(e=>e.active);
+    const chunks=[];
+    for(let i=0;i<Math.max(1,employees.length);i+=maxRows){
+      chunks.push(employees.slice(i,i+maxRows));
+    }
+    if(!employees.length) chunks[0]=[];
+
+    const contents=chunks.map((group,pageIndex)=>{
+      let out='';
+      out+=pdfText(pageW/2,575,18,'Weekly Schedule',true,'center');
+      out+=pdfText(pageW/2,558,9,`El Mexican Restaurant - Week of ${fmtDate(currentSchedule.weekStart,{month:'long',day:'numeric',year:'numeric'})}`,false,'center');
+      if(chunks.length>1) out+=pdfText(pageW-margin,558,8,`Page ${pageIndex+1} of ${chunks.length}`,false,'right');
+
+      out+=pdfFillRect(margin,topY-headerH,tableW,headerH,.94);
+      const bottomY=topY-headerH-group.length*rowH;
+      const xs=[margin,margin+nameW];
+      for(let d=1;d<=7;d++) xs.push(margin+nameW+dayW*d);
+      xs.forEach(x=>{ out+=pdfLine(x,topY,x,bottomY); });
+      out+=pdfLine(margin,topY,margin+tableW,topY);
+      out+=pdfLine(margin,topY-headerH,margin+tableW,topY-headerH);
+      for(let r=1;r<=group.length;r++){
+        const y=topY-headerH-r*rowH;
+        out+=pdfLine(margin,y,margin+tableW,y);
+      }
+
+      out+=pdfText(margin+7,topY-21,9,'Name',true);
+      DAYS.forEach((day,idx)=>{
+        const date=addDays(currentSchedule.weekStart,idx);
+        const cx=margin+nameW+dayW*idx+dayW/2;
+        out+=pdfText(cx,topY-15,8,DAY_LABEL[day],true,'center');
+        out+=pdfText(cx,topY-27,7,fmtDate(date,{month:'numeric',day:'numeric'}),false,'center');
+      });
+
+      group.forEach((emp,rowIndex)=>{
+        const yTop=topY-headerH-rowIndex*rowH;
+        out+=pdfText(margin+6,yTop-21,8.5,emp.name,true);
+        DAYS.forEach((day,idx)=>{
+          const date=addDays(currentSchedule.weekStart,idx);
+          const list=shifts.filter(s=>s.employee===emp.name && s.date===date);
+          const cx=margin+nameW+dayW*idx+dayW/2;
+          if(list.length===1){
+            out+=pdfText(cx,yTop-21,7.2,shiftText(list[0]),false,'center');
+          }else if(list.length>1){
+            list.slice(0,2).forEach((s,lineIndex)=>{
+              out+=pdfText(cx,yTop-14-lineIndex*11,6.6,shiftText(s),false,'center');
+            });
+          }
+        });
+      });
+      out+=pdfText(margin,30,7,'Times shown are scheduled work hours.',false);
+      return out;
+    });
+
+    const enc=new TextEncoder();
+    const objects=[];
+    objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+    objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    objects[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+    const pageRefs=[];
+    contents.forEach((content,i)=>{
+      const pageObj=5+i*2;
+      const contentObj=pageObj+1;
+      pageRefs.push(`${pageObj} 0 R`);
+      objects[pageObj]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObj} 0 R >>`;
+      objects[contentObj]=`<< /Length ${enc.encode(content).length} >>\nstream\n${content}\nendstream`;
+    });
+    objects[2]=`<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${contents.length} >>`;
+
+    let pdf='%PDF-1.4\n% Schedule App PDF\n';
+    const offsets=[0];
+    for(let i=1;i<objects.length;i++){
+      offsets[i]=enc.encode(pdf).length;
+      pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`;
+    }
+    const xref=enc.encode(pdf).length;
+    pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+    for(let i=1;i<objects.length;i++){
+      pdf+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
+    }
+    pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    return new Blob([enc.encode(pdf)],{type:'application/pdf'});
+  }
+
+  function downloadPdf(blob,filename){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+
+  async function exportWeeklySchedulePdf(){
+    if(!currentSchedule){ showToast('Generate a schedule first'); return; }
+    const blob=buildWeeklySchedulePdf();
+    const filename=`El_Mexican_Schedule_${currentSchedule.weekStart}.pdf`;
+    let file=null;
+    try{ file=new File([blob],filename,{type:'application/pdf'}); }catch(_){}
+
+    try{
+      if(file && navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+        await navigator.share({
+          title:`El Mexican weekly schedule - ${currentSchedule.weekStart}`,
+          text:'Weekly schedule PDF attached. Send this to the restaurant work email for printing.',
+          files:[file]
+        });
+        return;
+      }
+    }catch(err){
+      if(err?.name==='AbortError') return;
+    }
+
+    downloadPdf(blob,filename);
+    showToast('PDF saved. Attach it to an email from your device.');
   }
 
   function printWeeklyGrid(){
