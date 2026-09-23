@@ -1,4 +1,4 @@
-const CACHE='schedule-app-v0.4.0';
+const CACHE='schedule-app-v0.4.1';
 const SHELL=['./','./index.html','./styles.css','./app.js','./rules-editor.js','./schedule-v03.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>
