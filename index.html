@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#1f2937" />
-  <title>Schedule App V0.2</title>
+  <title>Schedule App V0.3</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -12,7 +12,7 @@
   <header class="app-header">
     <div>
       <div class="eyebrow">El Mexican Restaurant</div>
-      <h1>Schedule App <span class="version">V0.2</span></h1>
+      <h1>Schedule App <span class="version">V0.3</span></h1>
     </div>
     <button id="installBtn" class="ghost hidden" type="button">Install</button>
   </header>
@@ -22,6 +22,7 @@
     <button class="tab" data-tab="employees">Employees</button>
     <button class="tab" data-tab="availability">Availability</button>
     <button class="tab" data-tab="rules">Rules</button>
+    <button class="tab" data-tab="calendar">Calendar</button>
     <button class="tab" data-tab="data">Data</button>
   </nav>
 
@@ -155,6 +156,30 @@
       </div>
     </section>
 
+    <section id="tab-calendar" class="tab-panel">
+      <div class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Special Days Calendar</h2>
+            <p>Mark holidays, events, school breaks, festivals, or any day that may need extra help.</p>
+          </div>
+          <button id="addSpecialDayBtn" class="primary" type="button">Add Special Day</button>
+        </div>
+        <div class="calendar-toolbar">
+          <button id="calendarPrev" type="button" aria-label="Previous month">‹</button>
+          <strong id="calendarMonthLabel"></strong>
+          <button id="calendarNext" type="button" aria-label="Next month">›</button>
+        </div>
+        <div id="specialCalendar" class="special-calendar"></div>
+      </div>
+
+      <div class="card">
+        <h2>Upcoming Special Days</h2>
+        <p>Use “Add Coverage” when a special day needs extra staff beyond the normal schedule.</p>
+        <div id="specialDaysList"></div>
+      </div>
+    </section>
+
     <section id="tab-data" class="tab-panel">
       <div class="card data-card">
         <h2>Database</h2>
@@ -268,8 +293,48 @@
     </form>
   </dialog>
 
+  <dialog id="shareEmployeeDialog">
+    <div class="dialog-form">
+      <div class="section-title-row">
+        <div><div class="eyebrow">Share Schedule</div><h2>Share by Employee</h2></div>
+        <button id="closeShareEmployeeDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="small">Choose an employee to share only that person's weekly schedule.</p>
+      <div id="shareEmployeeList" class="share-employee-list"></div>
+      <div class="dialog-actions">
+        <button id="shareAllEmployeesBtn" type="button">Share Everyone, Grouped</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="specialDayDialog">
+    <form id="specialDayForm" method="dialog" class="dialog-form">
+      <div class="section-title-row">
+        <div><div class="eyebrow">Calendar Reminder</div><h2 id="specialDayDialogTitle">Add Special Day</h2></div>
+        <button id="closeSpecialDayDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="specialDayId" type="hidden" />
+      <label>Date<input id="specialDayDate" type="date" required /></label>
+      <label>Name<input id="specialDayLabel" type="text" required placeholder="Cinco de Mayo, Mother's Day, local event..." /></label>
+      <label>Expected business level
+        <select id="specialDayBusyLevel">
+          <option value="moderate">Moderately busy</option>
+          <option value="busy" selected>Busy</option>
+          <option value="very_busy">Very busy</option>
+        </select>
+      </label>
+      <label class="checkline"><input id="specialDayRemind" type="checkbox" checked /><span>Remind me to review/add extra help</span></label>
+      <label>Note<textarea id="specialDayNote" rows="3" placeholder="Why this day matters, expected rush, etc."></textarea></label>
+      <div class="dialog-actions">
+        <button id="deleteSpecialDayBtn" class="danger-outline" type="button">Delete</button>
+        <button class="primary" value="save" type="submit">Save Special Day</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>
   <script src="rules-editor.js"></script>
+  <script src="schedule-v03.js"></script>
 </body>
 </html>
