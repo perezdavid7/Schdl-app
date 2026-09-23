@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#1f2937" />
-  <title>Schedule App V0.4</title>
+  <title>Schedule App V0.4.1</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -12,7 +12,7 @@
   <header class="app-header">
     <div>
       <div class="eyebrow">El Mexican Restaurant</div>
-      <h1>Schedule App <span class="version">V0.4</span></h1>
+      <h1>Schedule App <span class="version">V0.4.1</span></h1>
     </div>
     <button id="installBtn" class="ghost hidden" type="button">Install</button>
   </header>
@@ -71,10 +71,27 @@
     </section>
 
     <section id="tab-availability" class="tab-panel">
+      <div class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>Normal Availability</h2>
+            <p>This is each employee's usual weekly availability. Change it here when their regular schedule changes.</p>
+          </div>
+        </div>
+        <div id="normalAvailabilityList" class="normal-availability-list"></div>
+      </div>
+
+      <div class="section-title-row availability-section-title">
+        <div>
+          <h2>Temporary Changes</h2>
+          <p>Use these only when someone's availability is different for a specific date or week.</p>
+        </div>
+      </div>
+
       <div class="grid-two">
         <form id="exceptionForm" class="card form-card">
-          <h2>Weekly Exception</h2>
-          <p>Use this for a one-time change without changing the employee's normal availability.</p>
+          <h2>Add Temporary Change</h2>
+          <p>This does not change the employee's normal availability.</p>
           <label>Employee<select id="exceptionEmployee" required></select></label>
           <label>Date<input id="exceptionDate" type="date" required /></label>
           <label>Change
@@ -88,11 +105,11 @@
             <label>End<input id="exceptionEnd" type="time" value="21:00" required /></label>
           </div>
           <label>Note<input id="exceptionNote" type="text" placeholder="Appointment, school, can fill in, etc." /></label>
-          <button class="primary" type="submit">Save Exception</button>
+          <button class="primary" type="submit">Save Temporary Change</button>
         </form>
 
         <div class="card">
-          <h2>Saved Exceptions</h2>
+          <h2>Saved Temporary Changes</h2>
           <div id="exceptionList"></div>
         </div>
       </div>
@@ -239,6 +256,33 @@
       <div class="dialog-actions">
         <button id="archiveEmployeeBtn" class="danger-outline" type="button">Archive</button>
         <button class="primary" value="save" type="submit">Save Employee</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="availabilityDialog">
+    <form id="availabilityForm" method="dialog" class="dialog-form">
+      <div class="section-title-row">
+        <div>
+          <div class="eyebrow">Normal Availability</div>
+          <h2 id="availabilityDialogTitle">Edit Availability</h2>
+        </div>
+        <button id="closeAvailabilityDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="availabilityEmployeeId" type="hidden" />
+      <label>Availability type
+        <select id="availabilityModeEdit">
+          <option value="recurring">Recurring / normal pattern</option>
+          <option value="weekly_variable">Entered fresh each week</option>
+        </select>
+      </label>
+      <fieldset>
+        <legend>Usual Weekly Availability</legend>
+        <p class="small">AM covers the first-shift window. PM covers the second-shift window. Select both for either shift.</p>
+        <div id="availabilityMatrixEdit" class="availability-matrix"></div>
+      </fieldset>
+      <div class="dialog-actions">
+        <button class="primary" value="save" type="submit">Save Availability</button>
       </div>
     </form>
   </dialog>
