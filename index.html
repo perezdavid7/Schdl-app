@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#1f2937" />
-  <title>Schedule App V0.4.1</title>
+  <title>Schedule App V0.4.2</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -12,7 +12,7 @@
   <header class="app-header">
     <div>
       <div class="eyebrow">El Mexican Restaurant</div>
-      <h1>Schedule App <span class="version">V0.4.1</span></h1>
+      <h1>Schedule App <span class="version">V0.4.2</span></h1>
     </div>
     <button id="installBtn" class="ghost hidden" type="button">Install</button>
   </header>
@@ -93,7 +93,10 @@
           <h2>Add Temporary Change</h2>
           <p>This does not change the employee's normal availability.</p>
           <label>Employee<select id="exceptionEmployee" required></select></label>
-          <label>Date<input id="exceptionDate" type="date" required /></label>
+          <div class="split">
+            <label>Start date<input id="exceptionStartDate" type="date" required /></label>
+            <label>End date<input id="exceptionEndDate" type="date" required /></label>
+          </div>
           <label>Change
             <select id="exceptionType">
               <option value="available">Available</option>
