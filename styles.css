@@ -66,3 +66,46 @@ dialog{width:min(680px,calc(100vw - 24px));border:0;border-radius:18px;padding:0
 
 .normal-availability-list{display:grid;gap:8px}.normal-availability-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e5e7eb}.normal-availability-row:last-child{border-bottom:0}.normal-availability-main{min-width:0}.availability-section-title{margin-top:20px}
 @media(max-width:600px){.normal-availability-row{align-items:flex-start;flex-direction:column}.normal-availability-row button{width:100%}}
+
+.mobile-week-strip{display:none}
+@media(max-width:900px){
+  .mobile-week-strip{
+    display:grid;
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:5px;
+    margin:10px 0 12px;
+    padding:0 1px;
+  }
+  .mobile-week-day{
+    min-width:0;
+    padding:8px 2px;
+    border-radius:10px;
+    background:white;
+    border:1px solid #d1d5db;
+    color:#374151;
+    display:grid;
+    gap:2px;
+    text-align:center;
+    font-weight:800;
+  }
+  .mobile-week-day[aria-selected="true"]{
+    background:var(--text);
+    color:white;
+    border-color:var(--text);
+  }
+  .mobile-week-name{font-size:.72rem}
+  .mobile-week-date{font-size:.62rem;font-weight:700;opacity:.85}
+  .schedule-grid.mobile-day-view{
+    display:block;
+    overflow:visible;
+    padding-bottom:0;
+  }
+  .schedule-grid.mobile-day-view .day-card{
+    display:none;
+    min-width:0;
+    width:100%;
+  }
+  .schedule-grid.mobile-day-view .day-card.mobile-active{
+    display:block;
+  }
+}
