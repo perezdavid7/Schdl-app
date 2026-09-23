@@ -688,8 +688,8 @@ function renderExceptionEmployeeOptions(){
 
 function addException(e){
   e.preventDefault();
-  const startDate=$('exceptionStartDate').value;
-  const endDate=$('exceptionEndDate').value || startDate;
+  const startDate=$('exceptionStartDate')?.value || $('exceptionDate')?.value || '';
+  const endDate=$('exceptionEndDate')?.value || startDate;
   if(!startDate || !endDate){ showToast('Choose a start and end date'); return; }
   if(endDate<startDate){ showToast('End date must be on or after start date'); return; }
   const employeeId=$('exceptionEmployee').value;
