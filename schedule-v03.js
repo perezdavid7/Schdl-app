@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.3.0';
+  const V03='0.3.1';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -9,6 +9,16 @@
   normalizeState=function(){
     baseNormalize();
     state.specialDays ||= [];
+    state.specialDays.forEach(ev=>{
+      if(!ev.staffingImpact){
+        ev.staffingImpact = ev.busyLevel==='very_busy' ? 'extra_help'
+          : (ev.busyLevel==='busy' || ev.busyLevel==='moderate') ? 'may_busier'
+          : 'unknown';
+      }
+      if(typeof ev.reviewStaffing!=='boolean'){
+        ev.reviewStaffing = typeof ev.remindExtraHelp==='boolean' ? ev.remindExtraHelp : true;
+      }
+    });
     state.meta ||= {};
     state.meta.appVersion=V03;
   };
@@ -226,7 +236,7 @@
       if(events.length){
         const dots=document.createElement('div'); dots.className='calendar-events';
         events.slice(0,2).forEach(ev=>{
-          const tag=document.createElement('span'); tag.className=`calendar-tag level-${ev.busyLevel||'busy'}`; tag.textContent=ev.label; dots.appendChild(tag);
+          const tag=document.createElement('span'); tag.className=`calendar-tag impact-${ev.staffingImpact||'unknown'}`; tag.textContent=ev.label; dots.appendChild(tag);
         });
         if(events.length>2){ const more=document.createElement('span'); more.className='calendar-more'; more.textContent=`+${events.length-2} more`; dots.appendChild(more); }
         cell.appendChild(dots);
@@ -248,8 +258,8 @@
     $('specialDayId').value=ev?.id||'';
     $('specialDayDate').value=ev?.date||date||toISODate(new Date());
     $('specialDayLabel').value=ev?.label||'';
-    $('specialDayBusyLevel').value=ev?.busyLevel||'busy';
-    $('specialDayRemind').checked=ev ? ev.remindExtraHelp!==false : true;
+    $('specialDayStaffingImpact').value=ev?.staffingImpact||'unknown';
+    $('specialDayReviewStaffing').checked=ev ? ev.reviewStaffing!==false : true;
     $('specialDayNote').value=ev?.note||'';
     $('deleteSpecialDayBtn').classList.toggle('hidden',!ev);
     $('specialDayDialog').showModal();
@@ -262,8 +272,8 @@
       id,
       date:$('specialDayDate').value,
       label:$('specialDayLabel').value.trim(),
-      busyLevel:$('specialDayBusyLevel').value,
-      remindExtraHelp:$('specialDayRemind').checked,
+      staffingImpact:$('specialDayStaffingImpact').value,
+      reviewStaffing:$('specialDayReviewStaffing').checked,
       note:$('specialDayNote').value.trim()
     };
     const idx=state.specialDays.findIndex(x=>x.id===id);
@@ -292,7 +302,7 @@
     root.innerHTML='';
     list.forEach(ev=>{
       const row=document.createElement('div'); row.className='special-day-row';
-      row.innerHTML=`<div><strong>${escapeHtml(ev.label)}</strong><div class="list-row-sub">${fmtDate(ev.date,{weekday:'short',month:'short',day:'numeric'})} · ${busyLabel(ev.busyLevel)}${ev.remindExtraHelp?' · Extra-help reminder':''}</div>${ev.note?`<div class="special-note">${escapeHtml(ev.note)}</div>`:''}</div>`;
+      row.innerHTML=`<div><strong>${escapeHtml(ev.label)}</strong><div class="list-row-sub">${fmtDate(ev.date,{weekday:'short',month:'short',day:'numeric'})} · ${impactLabel(ev.staffingImpact)}${ev.reviewStaffing?' · Staffing review reminder':''}</div>${ev.note?`<div class="special-note">${escapeHtml(ev.note)}</div>`:''}</div>`;
       const actions=document.createElement('div'); actions.className='special-actions';
       const cover=document.createElement('button'); cover.type='button'; cover.textContent='Add Coverage';
       cover.addEventListener('click',()=>prefillCoverage(ev));
@@ -301,8 +311,15 @@
     });
   }
 
-  function busyLabel(level){
-    return ({moderate:'Moderately busy',busy:'Busy',very_busy:'Very busy'})[level]||'Busy';
+  function impactLabel(impact){
+    return ({
+      unknown:'Unknown / review later',
+      normal:'Normal staffing',
+      slower:'May be slower',
+      may_busier:'May be busier',
+      extra_help:'Extra help likely needed',
+      custom:'Custom staffing'
+    })[impact]||'Unknown / review later';
   }
 
   function prefillCoverage(ev){
@@ -334,12 +351,13 @@
     events.forEach(ev=>{
       const hasCoverage=(state.specialDateOverrides||[]).some(x=>x.date===ev.date);
       const div=document.createElement('div');
-      div.className=`alert ${ev.remindExtraHelp && !hasCoverage?'warn':'ok'}`;
-      const status=ev.remindExtraHelp
-        ? (hasCoverage?'Extra coverage is already added.':'Reminder: review/add extra help for this day.')
-        : '';
+      const needsExtra=ev.staffingImpact==='extra_help';
+      div.className=`alert ${ev.reviewStaffing?'warn':'ok'}`;
+      let status=`${impactLabel(ev.staffingImpact)}.`;
+      if(ev.reviewStaffing) status += ' Reminder: review staffing for this day.';
+      if(hasCoverage) status += ' Extra coverage has already been added.';
       div.innerHTML=`<strong>${escapeHtml(ev.label)}</strong> — ${fmtDate(ev.date,{weekday:'long',month:'short',day:'numeric'})}. ${escapeHtml(status)}`;
-      if(ev.remindExtraHelp && !hasCoverage){
+      if(needsExtra && !hasCoverage){
         const btn=document.createElement('button'); btn.type='button'; btn.className='alert-action'; btn.textContent='Add coverage';
         btn.addEventListener('click',()=>prefillCoverage(ev));
         div.appendChild(btn);
