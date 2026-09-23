@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#1f2937" />
+  <title>El Mexican Weekly Schedule</title>
+  <style>
+    :root{font-family:Arial,Helvetica,sans-serif;color:#111;background:#f4f5f7}
+    *{box-sizing:border-box}
+    body{margin:0;padding:18px}
+    .actions{max-width:1100px;margin:0 auto 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .actions p{margin:0;color:#4b5563;font-size:14px}
+    button{border:0;border-radius:10px;padding:11px 16px;font:700 14px Arial,Helvetica,sans-serif;background:#1f2937;color:#fff;cursor:pointer}
+    .sheet{max-width:1100px;margin:0 auto;background:#fff;padding:22px;border:1px solid #d1d5db;border-radius:12px}
+    h1{text-align:center;margin:0 0 4px;font-size:26px}
+    .subtitle{text-align:center;margin:0 0 16px;font-size:13px}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    th,td{border:1.5px solid #333;text-align:center;vertical-align:middle;padding:6px 4px;height:54px;font-size:12px;overflow-wrap:anywhere}
+    thead th{font-weight:800;background:#f3f4f6;height:44px}
+    thead th:first-child{width:15%}
+    tbody th{text-align:left;padding-left:8px;font-size:13px;width:15%}
+    thead span{display:block;font-size:9px;font-weight:500;margin-top:2px;color:#444}
+    td div+div{margin-top:3px}
+    .error{max-width:760px;margin:40px auto;background:#fff;border:1px solid #fecaca;border-radius:12px;padding:18px;color:#991b1b}
+    .note{font-size:9px;text-align:left;margin-top:8px;color:#555}
+    @media(max-width:700px){
+      body{padding:8px}.sheet{padding:10px;overflow-x:auto}
+      table{min-width:850px}.actions{padding:4px}
+    }
+    @page{size:landscape;margin:.35in}
+    @media print{
+      :root,body{background:#fff}
+      body{padding:0}
+      .actions{display:none!important}
+      .sheet{max-width:none;margin:0;padding:0;border:0;border-radius:0}
+      table{min-width:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="actions">
+    <p>This is the shared weekly schedule. Print it from this computer or choose Save as PDF in the print dialog.</p>
+    <button id="printButton" type="button">Print Schedule</button>
+  </div>
+  <main id="sheet" class="sheet" hidden>
+    <h1>Weekly Schedule</h1>
+    <p id="subtitle" class="subtitle"></p>
+    <table>
+      <thead><tr id="headerRow"><th>Name</th></tr></thead>
+      <tbody id="scheduleBody"></tbody>
+    </table>
+    <div class="note">Times shown are scheduled work hours.</div>
+  </main>
+  <div id="error" class="error" hidden>That schedule link is missing or invalid. Please share a new schedule link from the Schedule App.</div>
+  <script>
+    (function(){
+      function decodePayload(){
+        const prefix='#schedule=';
+        if(!location.hash.startsWith(prefix)) throw new Error('Missing schedule');
+        let b64=location.hash.slice(prefix.length).replace(/-/g,'+').replace(/_/g,'/');
+        while(b64.length%4) b64+='=';
+        const binary=atob(b64);
+        const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+      function formatWeekStart(iso){
+        const parts=String(iso).split('-').map(Number);
+        if(parts.length!==3 || parts.some(Number.isNaN)) return iso;
+        return new Date(parts[0],parts[1]-1,parts[2],12).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'});
+      }
+      try{
+        const data=decodePayload();
+        if(!Array.isArray(data.days)||!Array.isArray(data.rows)) throw new Error('Bad schedule');
+        document.getElementById('subtitle').textContent=(data.restaurant||'El Mexican Restaurant')+' · Week of '+formatWeekStart(data.weekStart);
+        const header=document.getElementById('headerRow');
+        data.days.forEach(day=>{
+          const th=document.createElement('th');
+          th.append(document.createTextNode(day.label||''));
+          const span=document.createElement('span');
+          span.textContent=day.dateLabel||'';
+          th.appendChild(span);
+          header.appendChild(th);
+        });
+        const body=document.getElementById('scheduleBody');
+        data.rows.forEach(row=>{
+          const tr=document.createElement('tr');
+          const name=document.createElement('th');
+          name.scope='row';
+          name.textContent=row.name||'';
+          tr.appendChild(name);
+          (row.cells||[]).forEach(cell=>{
+            const td=document.createElement('td');
+            (cell||[]).forEach(line=>{
+              const div=document.createElement('div');
+              div.textContent=line;
+              td.appendChild(div);
+            });
+            tr.appendChild(td);
+          });
+          body.appendChild(tr);
+        });
+        document.getElementById('sheet').hidden=false;
+      }catch(err){
+        document.getElementById('error').hidden=false;
+      }
+      document.getElementById('printButton').addEventListener('click',()=>window.print());
+    })();
+  </script>
+</body>
+</html>
