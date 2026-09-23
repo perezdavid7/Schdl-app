@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#1f2937" />
-  <title>Schedule App V0.3.1</title>
+  <title>Schedule App V0.4</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -12,7 +12,7 @@
   <header class="app-header">
     <div>
       <div class="eyebrow">El Mexican Restaurant</div>
-      <h1>Schedule App <span class="version">V0.3.1</span></h1>
+      <h1>Schedule App <span class="version">V0.4</span></h1>
     </div>
     <button id="installBtn" class="ghost hidden" type="button">Install</button>
   </header>
@@ -161,7 +161,7 @@
         <div class="section-title-row">
           <div>
             <h2>Special Days Calendar</h2>
-            <p>Mark holidays, events, school breaks, festivals, or any day that may need extra help.</p>
+            <p>U.S. holidays appear automatically. Add local events or other dates that could affect staffing.</p>
           </div>
           <button id="addSpecialDayBtn" class="primary" type="button">Add Special Day</button>
         </div>
@@ -315,7 +315,14 @@
       </div>
       <input id="specialDayId" type="hidden" />
       <label>Date<input id="specialDayDate" type="date" required /></label>
-      <label>Name<input id="specialDayLabel" type="text" required placeholder="Cinco de Mayo, Mother's Day, local event..." /></label>
+      <label>Name<input id="specialDayLabel" type="text" required placeholder="Local event, school break, observance..." /></label>
+      <label>Category
+        <select id="specialDayCategory">
+          <option value="local_event" selected>Local Event</option>
+          <option value="holiday">Holiday / Observance</option>
+          <option value="other">Other Special Day</option>
+        </select>
+      </label>
       <label>Expected staffing impact
         <select id="specialDayStaffingImpact">
           <option value="unknown" selected>Unknown / review later</option>
