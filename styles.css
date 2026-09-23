@@ -63,3 +63,6 @@ dialog{width:min(680px,calc(100vw - 24px));border:0;border-radius:18px;padding:0
 .calendar-tag.event-national_holiday{outline:1px solid #c7d2fe}
 .calendar-tag.event-local_event{outline:1px solid #f5d0fe}
 .event-kind{font-size:.78em;font-weight:700;color:inherit;opacity:.8}
+
+.normal-availability-list{display:grid;gap:8px}.normal-availability-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e5e7eb}.normal-availability-row:last-child{border-bottom:0}.normal-availability-main{min-width:0}.availability-section-title{margin-top:20px}
+@media(max-width:600px){.normal-availability-row{align-items:flex-start;flex-direction:column}.normal-availability-row button{width:100%}}
