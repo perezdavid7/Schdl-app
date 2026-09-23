@@ -101,6 +101,11 @@ function bindActions(){
   $('employeeForm').addEventListener('submit', saveEmployeeFromDialog);
   $('archiveEmployeeBtn').addEventListener('click', archiveEmployeeFromDialog);
   $('exceptionForm').addEventListener('submit', addException);
+  $('exceptionStartDate')?.addEventListener('change',()=>{
+    if(!$('exceptionEndDate').value || $('exceptionEndDate').value<$('exceptionStartDate').value){
+      $('exceptionEndDate').value=$('exceptionStartDate').value;
+    }
+  });
   $('closeAvailabilityDialog')?.addEventListener('click', () => $('availabilityDialog').close());
   $('availabilityForm')?.addEventListener('submit', saveAvailabilityFromDialog);
   $('overrideForm').addEventListener('submit', addOverride);
@@ -683,19 +688,34 @@ function renderExceptionEmployeeOptions(){
 
 function addException(e){
   e.preventDefault();
-  state.weeklyExceptions.push({
-    id:uid('ex'), employeeId:$('exceptionEmployee').value, date:$('exceptionDate').value,
-    type:$('exceptionType').value, start:$('exceptionStart').value, end:$('exceptionEnd').value,
-    note:$('exceptionNote').value.trim()
-  });
-  saveState(); renderExceptions(); $('exceptionNote').value='';
-  showToast('Weekly exception saved');
+  const startDate=$('exceptionStartDate').value;
+  const endDate=$('exceptionEndDate').value || startDate;
+  if(!startDate || !endDate){ showToast('Choose a start and end date'); return; }
+  if(endDate<startDate){ showToast('End date must be on or after start date'); return; }
+  const employeeId=$('exceptionEmployee').value;
+  const type=$('exceptionType').value;
+  const start=$('exceptionStart').value;
+  const end=$('exceptionEnd').value;
+  const note=$('exceptionNote').value.trim();
+  let date=startDate, count=0;
+  while(date<=endDate && count<370){
+    state.weeklyExceptions.push({
+      id:uid('ex'), employeeId, date, type, start, end, note
+    });
+    date=addDays(date,1);
+    count++;
+  }
+  saveState();
+  renderExceptions();
+  $('exceptionNote').value='';
+  $('exceptionEndDate').value=startDate;
+  showToast(count===1?'Temporary change saved':`Temporary change saved for ${count} days`);
 }
 
 function renderExceptions(){
   const root=$('exceptionList');
   const list=[...(state.weeklyExceptions||[])].sort((a,b)=>a.date.localeCompare(b.date));
-  if(!list.length){ root.innerHTML='<p>No weekly exceptions saved yet.</p>'; return; }
+  if(!list.length){ root.innerHTML='<p>No temporary changes saved yet.</p>'; return; }
   root.innerHTML='';
   list.forEach(ex=>{
     const emp=employeeById(ex.employeeId);
