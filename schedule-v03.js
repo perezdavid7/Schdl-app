@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.4.7';
+  const V03='0.5.0';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -135,6 +135,7 @@
     wirePrintAndShare();
     wireCalendar();
     wireAvailability();
+    wireWeeklyFlow();
     renderSpecialDaysList();
     renderCalendar();
     renderNormalAvailability();
@@ -259,6 +260,168 @@
   window.addEventListener('resize',()=>{
     if(currentSchedule) renderMobileWeekView();
   });
+
+  let weeklyFlowActive=false;
+  let weeklyFlowStep=0;
+  const WEEKLY_FLOW_STEPS=[
+    {
+      tab:'employees',
+      title:'Employees',
+      text:'Confirm everyone who may work this week is listed and active. Add, edit, archive, or reactivate employees as needed.',
+      target:'employeeList'
+    },
+    {
+      tab:'availability',
+      title:'Normal Availability',
+      text:'Review each employee\'s usual availability. Fix anything that is not correct before moving on.',
+      target:'normalAvailabilityList'
+    },
+    {
+      tab:'availability',
+      title:'Time Off & Temporary Changes',
+      text:'Enter vacations, requested time off, appointments, school conflicts, or temporary extra availability for this week.',
+      target:'exceptionForm'
+    },
+    {
+      tab:'calendar',
+      title:'Special Days & Events',
+      text:'Review holidays and local events that fall during this week and decide whether staffing needs to change.',
+      target:'specialDaysList'
+    },
+    {
+      tab:'schedule',
+      title:'Generate Schedule',
+      text:'Everything for the week has been reviewed. Generate the schedule using the current employees, availability, time off, coverage rules, and priorities.',
+      target:'scheduleGrid',
+      action:'generate'
+    },
+    {
+      tab:'schedule',
+      title:'Review Schedule',
+      text:'Check uncovered shifts, guaranteed hours, and each day. Make any manual assignment changes before continuing.',
+      target:'alerts'
+    },
+    {
+      tab:'schedule',
+      title:'Output & Share',
+      text:'Share the printable schedule to the work computer, or share each employee\'s individual schedule. Finish when the week is ready.',
+      target:'printBtn',
+      action:'finish'
+    }
+  ];
+
+  function wireWeeklyFlow(){
+    const oldGenerate=$('generateBtn');
+    if(oldGenerate){
+      const btn=oldGenerate.cloneNode(true);
+      oldGenerate.replaceWith(btn);
+      btn.textContent='Start Weekly Setup';
+      btn.addEventListener('click',startWeeklyFlow);
+    }
+    $('weeklyFlowBack')?.addEventListener('click',()=>moveWeeklyFlow(-1));
+    $('weeklyFlowNext')?.addEventListener('click',handleWeeklyFlowNext);
+    $('weeklyFlowExit')?.addEventListener('click',()=>endWeeklyFlow(false));
+  }
+
+  function startWeeklyFlow(){
+    if(!$('weekDate')?.value){
+      $('weekDate').value=mondayOf(toISODate(new Date()));
+    }
+    weeklyFlowActive=true;
+    weeklyFlowStep=0;
+    const weekStart=$('weekDate').value;
+    const end=addDays(weekStart,6);
+    if($('exceptionStartDate') && !$('exceptionStartDate').value) $('exceptionStartDate').value=weekStart;
+    if($('exceptionEndDate') && !$('exceptionEndDate').value) $('exceptionEndDate').value=end;
+    renderWeeklyFlow();
+  }
+
+  function endWeeklyFlow(done=true){
+    weeklyFlowActive=false;
+    $('weeklyFlowBar')?.classList.add('hidden');
+    qsa('.wizard-focus').forEach(x=>x.classList.remove('wizard-focus'));
+    const btn=$('generateBtn');
+    if(btn) btn.textContent='Start Weekly Setup';
+    if(done) showToast('Weekly schedule setup complete');
+  }
+
+  function moveWeeklyFlow(delta){
+    weeklyFlowStep=Math.max(0,Math.min(WEEKLY_FLOW_STEPS.length-1,weeklyFlowStep+delta));
+    renderWeeklyFlow();
+  }
+
+  function activateFlowTab(name){
+    qsa('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===name));
+    qsa('.tab-panel').forEach(p=>p.classList.remove('active'));
+    $('tab-'+name)?.classList.add('active');
+  }
+
+  function handleWeeklyFlowNext(){
+    const step=WEEKLY_FLOW_STEPS[weeklyFlowStep];
+    if(step.action==='generate'){
+      generateAndRender();
+      weeklyFlowStep=Math.min(WEEKLY_FLOW_STEPS.length-1,weeklyFlowStep+1);
+      setTimeout(renderWeeklyFlow,60);
+      return;
+    }
+    if(step.action==='finish'){
+      endWeeklyFlow(true);
+      return;
+    }
+    moveWeeklyFlow(1);
+  }
+
+  function renderWeeklyFlow(){
+    const bar=$('weeklyFlowBar');
+    if(!bar || !weeklyFlowActive) return;
+    const step=WEEKLY_FLOW_STEPS[weeklyFlowStep];
+    const weekStart=$('weekDate')?.value || mondayOf(toISODate(new Date()));
+    const weekEnd=addDays(weekStart,6);
+
+    bar.classList.remove('hidden');
+    $('weeklyFlowCount').textContent=`Step ${weeklyFlowStep+1} of ${WEEKLY_FLOW_STEPS.length}`;
+    $('weeklyFlowTitle').textContent=step.title;
+    $('weeklyFlowText').textContent=step.text;
+    $('weeklyFlowWeek').textContent=`${fmtDate(weekStart,{month:'short',day:'numeric'})} – ${fmtDate(weekEnd,{month:'short',day:'numeric',year:'numeric'})}`;
+
+    const progress=$('weeklyFlowProgress');
+    progress.innerHTML='';
+    WEEKLY_FLOW_STEPS.forEach((s,idx)=>{
+      const item=document.createElement('span');
+      item.className='weekly-flow-dot'+(idx<weeklyFlowStep?' done':idx===weeklyFlowStep?' active':'');
+      item.textContent=String(idx+1);
+      item.title=s.title;
+      progress.appendChild(item);
+    });
+
+    $('weeklyFlowBack').disabled=weeklyFlowStep===0;
+    const next=$('weeklyFlowNext');
+    next.textContent=step.action==='generate' ? 'Generate Schedule'
+      : step.action==='finish' ? 'Finish'
+      : 'Next';
+
+    activateFlowTab(step.tab);
+    qsa('.wizard-focus').forEach(x=>x.classList.remove('wizard-focus'));
+    const target=$(step.target);
+    target?.classList.add('wizard-focus');
+
+    if(weeklyFlowStep===2){
+      if($('exceptionStartDate') && !$('exceptionStartDate').value) $('exceptionStartDate').value=weekStart;
+      if($('exceptionEndDate') && !$('exceptionEndDate').value) $('exceptionEndDate').value=weekEnd;
+    }
+
+    if(weeklyFlowStep===3){
+      const events=calendarEventsBetween(weekStart,weekEnd);
+      if(events.length){
+        $('weeklyFlowText').textContent=`${step.text} This week currently has ${events.length} calendar event${events.length===1?'':'s'} to review.`;
+      }
+    }
+
+    setTimeout(()=>{
+      bar.scrollIntoView({behavior:'smooth',block:'start'});
+      setTimeout(()=>target?.scrollIntoView({behavior:'smooth',block:'center'}),180);
+    },20);
+  }
 
   function wirePrintAndShare(){
     const oldPrint=$('printBtn');
