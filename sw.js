@@ -1,5 +1,5 @@
-const CACHE='schedule-app-v0.5.5';
-const SHELL=['./','./index.html','./styles.css?v=0.5.5','./app.js?v=0.5.5','./rules-editor.js?v=0.5.5','./schedule-v03.js?v=0.5.5','./print.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='schedule-app-v0.5.6';
+const SHELL=['./','./index.html','./styles.css?v=0.5.6','./app.js?v=0.5.6','./rules-editor.js?v=0.5.6','./schedule-v03.js?v=0.5.6','./print.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>
   event.waitUntil(
