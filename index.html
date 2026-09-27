@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#1f2937" />
-  <title>Schedule App V0.5.6</title>
+  <title>Schedule App V0.5.7</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=0.5.6" />
+  <link rel="stylesheet" href="styles.css?v=0.5.7" />
 </head>
 <body>
   <header class="app-header">
     <div>
       <div class="eyebrow">El Mexican Restaurant</div>
-      <h1>Schedule App <span class="version">V0.5.6</span></h1>
+      <h1>Schedule App <span class="version">V0.5.7</span></h1>
     </div>
     <button id="installBtn" class="ghost hidden" type="button">Install</button>
   </header>
@@ -359,6 +359,29 @@
     </form>
   </dialog>
 
+  <dialog id="supportTimeDialog">
+    <form id="supportTimeForm" method="dialog" class="dialog-form">
+      <div class="section-title-row">
+        <div>
+          <div class="eyebrow">This Week Only</div>
+          <h2>Edit Optional Support Time</h2>
+        </div>
+        <button id="closeSupportTimeDialog" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="supportTimeSlotId" type="hidden" />
+      <label>Date<input id="supportTimeDate" type="date" readonly /></label>
+      <div class="split">
+        <label>Start<input id="supportTimeStart" type="time" required /></label>
+        <label>End<input id="supportTimeEnd" type="time" required /></label>
+      </div>
+      <p class="small">This changes the optional dishwasher / runner support time for this schedule week only.</p>
+      <div class="dialog-actions">
+        <button id="cancelSupportTimeDialog" type="button">Cancel</button>
+        <button class="primary" value="save" type="submit">Save Time</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="weeklyShiftDialog">
     <form id="weeklyShiftForm" method="dialog" class="dialog-form">
       <div class="section-title-row">
@@ -444,8 +467,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=0.5.6"></script>
-  <script src="rules-editor.js?v=0.5.6"></script>
-  <script src="schedule-v03.js?v=0.5.6"></script>
+  <script src="app.js?v=0.5.7"></script>
+  <script src="rules-editor.js?v=0.5.7"></script>
+  <script src="schedule-v03.js?v=0.5.7"></script>
 </body>
 </html>
