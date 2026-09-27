@@ -160,3 +160,21 @@ dialog{width:min(680px,calc(100vw - 24px));border:0;border-radius:18px;padding:0
   .weekly-flow-dot{width:27px;height:27px}
   .weekly-flow-actions button{flex:1}
 }
+
+/* V0.5.2 add-shift controls */
+.day-head{position:relative}
+.add-weekly-shift{
+  margin-top:9px;
+  width:100%;
+  padding:7px 9px;
+  border-radius:9px;
+  border:1px dashed #93c5fd;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:.75rem;
+  font-weight:900;
+}
+.add-weekly-shift:active{transform:translateY(1px)}
+@media(max-width:900px){
+  .add-weekly-shift{padding:9px 10px;font-size:.8rem}
+}
