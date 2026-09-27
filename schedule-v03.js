@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.5.4';
+  const V03='0.5.5';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -88,6 +88,11 @@
   normalizeState=function(){
     baseNormalize();
     state.specialDays ||= [];
+    // Remove the one-time demo event accidentally saved during testing.
+    state.specialDays = state.specialDays.filter(ev=>{
+      const label=String(ev.label||'').toLowerCase().replace(/[^a-z]/g,'');
+      return !(ev.date==='2026-09-23' && label.includes('cincodmayo'));
+    });
     state.specialDays.forEach(ev=>{
       if(!ev.staffingImpact){
         ev.staffingImpact = ev.busyLevel==='very_busy' ? 'extra_help'
