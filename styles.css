@@ -178,3 +178,15 @@ dialog{width:min(680px,calc(100vw - 24px));border:0;border-radius:18px;padding:0
 @media(max-width:900px){
   .add-weekly-shift{padding:9px 10px;font-size:.8rem}
 }
+
+/* V0.5.7 optional support */
+.support-time-edit{
+  margin-top:8px;
+  padding:7px 10px;
+  border-radius:9px;
+  border:1px solid #cbd5e1;
+  background:#fff;
+  font-size:.75rem;
+  font-weight:800;
+}
+.assignment .support-time-edit{width:auto}
