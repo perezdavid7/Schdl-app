@@ -121,6 +121,9 @@ function bindActions(){
   $('closeAvailabilityDialog')?.addEventListener('click', () => $('availabilityDialog').close());
   $('availabilityForm')?.addEventListener('submit', saveAvailabilityFromDialog);
   $('overrideForm').addEventListener('submit', addOverride);
+  $('supportTimeForm')?.addEventListener('submit', saveOptionalSupportTime);
+  $('closeSupportTimeDialog')?.addEventListener('click',()=>$('supportTimeDialog').close());
+  $('cancelSupportTimeDialog')?.addEventListener('click',()=>$('supportTimeDialog').close());
   $('exportBtn').addEventListener('click', exportJson);
   $('importFile').addEventListener('change', importJson);
   $('resetBtn').addEventListener('click', resetBundled);
@@ -225,9 +228,9 @@ function generateSchedule(weekStart){
     id:uid('sched'), weekStart, includeOptionalSupport:includeOptional,
     generatedAt:new Date().toISOString(), slots, assignments
   };
-  currentSchedule=schedule;
-  saveScheduleToHistory(schedule);
-  return schedule;
+  currentSchedule=ensureOptionalSupportSlots(schedule);
+  saveScheduleToHistory(currentSchedule);
+  return currentSchedule;
 }
 
 
@@ -434,12 +437,42 @@ function ensureOptionalSupportSlots(schedule){
   schedule.slots ||= [];
   schedule.assignments ||= [];
 
+  // Every day should offer an optional dishwasher / runner row. If that day
+  // has a programmed support rule, use its programmed time. Otherwise provide
+  // a one-week placeholder that defaults to 4:00 PM through close and can be
+  // edited directly on the schedule.
+  DAYS.forEach((day,idx)=>{
+    const date=addDays(schedule.weekStart,idx);
+    const programmed=optionalSlots.some(s=>s.date===date && s.role==='dish_runner');
+    if(programmed){
+      schedule.slots=schedule.slots.filter(s=>!(s.date===date && s.role==='dish_runner' && s.supportPlaceholder));
+      return;
+    }
+    optionalSlots.push({
+      id:`${date}:support-placeholder`,
+      templateId:'support-placeholder',
+      date,
+      day,
+      role:'dish_runner',
+      label:'Optional support',
+      start:'16:00',
+      end:state.businessHours?.[day]?.close || '20:00',
+      required:false,
+      source:'support_placeholder',
+      supportPlaceholder:true
+    });
+  });
+
   optionalSlots.forEach(slot=>{
     const existing=schedule.slots.find(s=>s.id===slot.id);
     if(existing){
-      // Keep the recurring optional row in sync with the current coverage
-      // template without disturbing a manual employee assignment.
-      Object.assign(existing,deepClone(slot));
+      // Keep programmed recurring rows synced to Rules, but preserve a
+      // one-week time edit made directly from the schedule.
+      if(!existing.weeklyTimeOverride){
+        const keepAssignmentFlag=existing.supportPlaceholder;
+        Object.assign(existing,deepClone(slot));
+        if(keepAssignmentFlag) existing.supportPlaceholder=true;
+      }
     }else{
       schedule.slots.push(deepClone(slot));
     }
@@ -508,7 +541,7 @@ function renderSchedule(){
 }
 
 function renderSlot(slot){
-  const wrap=document.createElement('div'); wrap.className='slot';
+  const wrap=document.createElement('div'); wrap.className='slot'; wrap.dataset.slotId=slot.id;
   const assignment=currentSchedule.assignments.find(a=>a.slotId===slot.id);
   const assignedEmp=assignment?employeeById(assignment.employeeId):null;
   wrap.innerHTML=`
@@ -529,12 +562,51 @@ function renderSlot(slot){
   });
   select.addEventListener('change',()=>manualAssign(slot,select.value));
   aWrap.appendChild(select);
+  if(!slot.required && slot.role==='dish_runner'){
+    const editTime=document.createElement('button');
+    editTime.type='button';
+    editTime.className='support-time-edit';
+    editTime.textContent='Edit time';
+    editTime.addEventListener('click',()=>openOptionalSupportTimeDialog(slot.id));
+    aWrap.appendChild(editTime);
+  }
   if(assignment?.source==='fixed'){
     const mark=document.createElement('span'); mark.className='fixed-mark'; mark.textContent='Recurring'; aWrap.appendChild(mark);
   } else if(!assignment && slot.required){
     const mark=document.createElement('span'); mark.className='gap-mark'; mark.textContent='Gap'; aWrap.appendChild(mark);
   }
   return wrap;
+}
+
+function openOptionalSupportTimeDialog(slotId){
+  if(!currentSchedule) return;
+  const slot=findSlot(slotId,currentSchedule.slots);
+  if(!slot) return;
+  $('supportTimeSlotId').value=slot.id;
+  $('supportTimeDate').value=slot.date;
+  $('supportTimeStart').value=slot.start;
+  $('supportTimeEnd').value=slot.end;
+  $('supportTimeDialog').showModal();
+}
+
+function saveOptionalSupportTime(e){
+  e.preventDefault();
+  if(!currentSchedule) return;
+  const slot=findSlot($('supportTimeSlotId').value,currentSchedule.slots);
+  if(!slot) return;
+  const start=$('supportTimeStart').value;
+  const end=$('supportTimeEnd').value;
+  if(!start || !end || minutes(end)<=minutes(start)){
+    showToast('Support end time must be after start time');
+    return;
+  }
+  slot.start=start;
+  slot.end=end;
+  slot.weeklyTimeOverride=true;
+  saveScheduleToHistory(currentSchedule);
+  $('supportTimeDialog').close();
+  renderSchedule();
+  showToast('Optional support time updated for this week');
 }
 
 function manualAssign(slot,employeeId){
