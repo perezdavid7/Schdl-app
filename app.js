@@ -41,8 +41,11 @@ async function init(){
     normalizeState();
     saveState();
     const today = toISODate(new Date());
-    $('weekDate').value = mondayOf(today);
-    $('includeSupport').checked = !!state.settings.includeOptionalSupportByDefault;
+    const nextScheduleWeek = addDays(mondayOf(today), 7);
+    $('weekDate').value = nextScheduleWeek;
+    $('includeSupport').checked = true;
+    state.settings.includeOptionalSupportByDefault = true;
+    saveState();
     renderAll();
     loadExistingOrGenerate();
   }catch(err){
@@ -91,7 +94,10 @@ function bindActions(){
   $('generateBtn').addEventListener('click', generateAndRender);
   $('weekDate').addEventListener('change', loadExistingOrGenerate);
   $('includeSupport').addEventListener('change', () => {
-    state.settings.includeOptionalSupportByDefault = $('includeSupport').checked;
+    // Optional support rows are part of every weekly schedule.
+    // Keep this on so morning/evening support survives refreshes.
+    $('includeSupport').checked = true;
+    state.settings.includeOptionalSupportByDefault = true;
     saveState();
   });
   $('printBtn').addEventListener('click', () => window.print());
@@ -164,7 +170,9 @@ function coverageSlotsForWeek(weekStart, includeOptional){
 }
 
 function generateSchedule(weekStart){
-  const includeOptional=$('includeSupport').checked;
+  const includeOptional=true;
+  $('includeSupport').checked=true;
+  state.settings.includeOptionalSupportByDefault=true;
   const slots=coverageSlotsForWeek(weekStart, includeOptional);
   const assignments=[];
 
@@ -413,13 +421,55 @@ function saveScheduleToHistory(schedule){
   saveState();
 }
 
+function ensureOptionalSupportSlots(schedule){
+  if(!schedule) return schedule;
+  const allSlots=coverageSlotsForWeek(schedule.weekStart,true);
+  const optionalSlots=allSlots.filter(s=>!s.required);
+  schedule.slots ||= [];
+  schedule.assignments ||= [];
+
+  optionalSlots.forEach(slot=>{
+    if(!schedule.slots.some(s=>s.id===slot.id)){
+      schedule.slots.push(deepClone(slot));
+    }
+
+    // Optional support normally stays unassigned. Only a recurring/fixed
+    // assignment is allowed to populate it automatically.
+    if(!schedule.assignments.some(a=>a.slotId===slot.id)){
+      const fixed=state.employees.find(emp=>{
+        if(!emp.active || !emp.roles?.includes(slot.role)) return false;
+        return (emp.recurringAssignments||[]).some(a=>{
+          if(a.day!==slot.day || a.role!==slot.role) return false;
+          const h=state.businessHours[slot.day]||{};
+          const s=a.start==='OPEN'?h.open:a.start;
+          const e=a.end==='CLOSE'?h.close:a.end;
+          return s && e && contains(s,e,slot.start,slot.end);
+        });
+      });
+      if(fixed) schedule.assignments.push({slotId:slot.id,employeeId:fixed.id,source:'fixed'});
+    }
+  });
+
+  schedule.slots.sort((a,b)=>a.date.localeCompare(b.date)||minutes(a.start)-minutes(b.start)||a.role.localeCompare(b.role));
+  schedule.includeOptionalSupport=true;
+  return schedule;
+}
+
 function loadExistingOrGenerate(){
   if(!state) return;
-  const week=mondayOf($('weekDate').value || toISODate(new Date()));
+  const week=mondayOf($('weekDate').value || addDays(mondayOf(toISODate(new Date())),7));
   $('weekDate').value=week;
-  const existing=(state.scheduleHistory||[]).find(s=>s.weekStart===week && s.includeOptionalSupport===$('includeSupport').checked);
-  if(existing){ currentSchedule=deepClone(existing); renderSchedule(); }
-  else generateAndRender();
+  $('includeSupport').checked=true;
+  state.settings.includeOptionalSupportByDefault=true;
+
+  const existing=(state.scheduleHistory||[]).find(s=>s.weekStart===week);
+  if(existing){
+    currentSchedule=ensureOptionalSupportSlots(deepClone(existing));
+    saveScheduleToHistory(currentSchedule);
+    renderSchedule();
+  } else {
+    generateAndRender();
+  }
 }
 function generateAndRender(){
   const week=mondayOf($('weekDate').value || toISODate(new Date()));
