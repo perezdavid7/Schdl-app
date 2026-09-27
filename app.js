@@ -186,7 +186,7 @@ function generateSchedule(weekStart){
     }
   }
 
-  const unassigned = slots.filter(s=>!assignments.some(a=>a.slotId===s.id));
+  const unassigned = slots.filter(s=>s.required && !assignments.some(a=>a.slotId===s.id));
   // Fill scarce coverage first so a flexible employee is not consumed by a slot
   // that another employee could have covered. Then use business importance.
   unassigned.sort((a,b)=>{
@@ -493,7 +493,7 @@ function renderStatsAndAlerts(){
   const betoHours=beto?hoursForEmployee(beto.id,currentSchedule):0;
   $('scheduleStats').innerHTML=`
     <div class="stat"><div class="value">${requiredGaps.length}</div><div class="label">Required gaps</div></div>
-    <div class="stat"><div class="value">${optionalGaps.length}</div><div class="label">Support gaps</div></div>
+    <div class="stat"><div class="value">${optionalGaps.length}</div><div class="label">Optional support open</div></div>
     <div class="stat"><div class="value">${totalHours.toFixed(1)}</div><div class="label">Scheduled hours</div></div>
     <div class="stat"><div class="value">${betoHours.toFixed(1)}</div><div class="label">Beto hours</div></div>`;
   const alerts=[];
