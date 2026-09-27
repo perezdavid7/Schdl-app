@@ -130,3 +130,33 @@ dialog{width:min(680px,calc(100vw - 24px));border:0;border-radius:18px;padding:0
     text-align:center;
   }
 }
+
+/* V0.5 weekly setup wizard */
+.weekly-flow{
+  position:sticky;
+  top:118px;
+  z-index:28;
+  border:2px solid #bfdbfe;
+  box-shadow:0 10px 30px rgba(37,99,235,.12);
+}
+.weekly-flow-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.weekly-flow-top h2{margin:3px 0 4px;font-size:1.2rem}
+.weekly-flow-top p{margin:0;color:var(--muted);line-height:1.4}
+.weekly-flow-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid #dbeafe}
+#weeklyFlowWeek{font-weight:800;font-size:.84rem;color:#374151}
+.weekly-flow-progress{display:flex;gap:5px;flex-wrap:wrap}
+.weekly-flow-dot{width:25px;height:25px;border-radius:50%;display:inline-grid;place-items:center;background:#e5e7eb;color:#6b7280;font-size:.72rem;font-weight:900}
+.weekly-flow-dot.active{background:var(--accent);color:white}
+.weekly-flow-dot.done{background:#d1fae5;color:#065f46}
+.weekly-flow-actions{display:flex;justify-content:space-between;gap:10px;margin-top:12px}
+.weekly-flow-actions button{min-width:110px}
+.wizard-focus{outline:3px solid rgba(37,99,235,.22);outline-offset:4px;border-radius:14px}
+@media(max-width:700px){
+  .weekly-flow{top:153px;padding:14px}
+  .weekly-flow-top{display:grid;grid-template-columns:1fr auto}
+  .weekly-flow-top .ghost{padding:8px 9px;font-size:.74rem}
+  .weekly-flow-meta{display:block}
+  .weekly-flow-progress{margin-top:9px;justify-content:space-between}
+  .weekly-flow-dot{width:27px;height:27px}
+  .weekly-flow-actions button{flex:1}
+}
