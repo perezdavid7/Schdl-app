@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.5.2';
+  const V03='0.5.3';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -112,6 +112,15 @@
   // Keep special-day reminders in sync whenever the schedule redraws.
   const baseRenderSchedule=renderSchedule;
   renderSchedule=function(){
+    if(currentSchedule){
+      const before=currentSchedule.assignments.length;
+      currentSchedule.assignments=currentSchedule.assignments.filter(a=>{
+        const slot=currentSchedule.slots.find(s=>s.id===a.slotId);
+        if(!slot || slot.required) return true;
+        return a.source==='fixed' || a.source==='manual';
+      });
+      if(currentSchedule.assignments.length!==before) saveScheduleToHistory(currentSchedule);
+    }
     baseRenderSchedule();
     addWeeklyShiftButtons();
     renderMobileWeekView();
