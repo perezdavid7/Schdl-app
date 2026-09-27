@@ -435,12 +435,17 @@ function ensureOptionalSupportSlots(schedule){
   schedule.assignments ||= [];
 
   optionalSlots.forEach(slot=>{
-    if(!schedule.slots.some(s=>s.id===slot.id)){
+    const existing=schedule.slots.find(s=>s.id===slot.id);
+    if(existing){
+      // Keep the recurring optional row in sync with the current coverage
+      // template without disturbing a manual employee assignment.
+      Object.assign(existing,deepClone(slot));
+    }else{
       schedule.slots.push(deepClone(slot));
     }
 
-    // Optional support normally stays unassigned. Only a recurring/fixed
-    // assignment is allowed to populate it automatically.
+    // Optional support is visible but blank by default. Only a programmed
+    // recurring/fixed assignment may fill it automatically.
     if(!schedule.assignments.some(a=>a.slotId===slot.id)){
       const fixed=state.employees.find(emp=>{
         if(!emp.active || !emp.roles?.includes(slot.role)) return false;
