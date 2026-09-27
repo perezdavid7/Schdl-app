@@ -17,6 +17,12 @@ function toISODate(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d
 function fromISODate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d,12,0,0,0); }
 function addDays(s, n){ const d=fromISODate(s); d.setDate(d.getDate()+n); return toISODate(d); }
 function mondayOf(s){ const d=fromISODate(s); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return toISODate(d); }
+function upcomingMonday(s=toISODate(new Date())){
+  const d=fromISODate(s);
+  const daysUntil=(8-d.getDay())%7;
+  d.setDate(d.getDate()+daysUntil);
+  return toISODate(d);
+}
 function minutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
 function timeFromMinutes(n){ n=Math.max(0,Math.min(1439,n)); return `${pad(Math.floor(n/60))}:${pad(n%60)}`; }
 function fmtTime(t){ if(!t) return ''; const [h,m]=t.split(':').map(Number); const suffix=h>=12?'PM':'AM'; const hh=h%12||12; return `${hh}:${pad(m)} ${suffix}`; }
@@ -41,7 +47,7 @@ async function init(){
     normalizeState();
     saveState();
     const today = toISODate(new Date());
-    const nextScheduleWeek = addDays(mondayOf(today), 7);
+    const nextScheduleWeek = upcomingMonday(today);
     $('weekDate').value = nextScheduleWeek;
     $('includeSupport').checked = true;
     state.settings.includeOptionalSupportByDefault = true;
@@ -472,7 +478,7 @@ function loadExistingOrGenerate(){
   }
 }
 function generateAndRender(){
-  const week=mondayOf($('weekDate').value || toISODate(new Date()));
+  const week=mondayOf($('weekDate').value || upcomingMonday());
   $('weekDate').value=week;
   currentSchedule=null; // avoid previous week influencing scoring/conflict lookup
   generateSchedule(week);
@@ -918,5 +924,15 @@ function escapeHtml(s=''){ return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;',
 function registerServiceWorker(){
   if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
+
+window.addEventListener('pageshow',()=>{
+  const weekInput=$('weekDate');
+  if(!weekInput || !state) return;
+  const intended=upcomingMonday();
+  if(weekInput.value!==intended){
+    weekInput.value=intended;
+    loadExistingOrGenerate();
+  }
+});
 
 document.addEventListener('DOMContentLoaded',init);
