@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.5.1';
+  const V03='0.5.2';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -113,6 +113,7 @@
   const baseRenderSchedule=renderSchedule;
   renderSchedule=function(){
     baseRenderSchedule();
+    addWeeklyShiftButtons();
     renderMobileWeekView();
     renderSpecialWeekAlerts();
   };
@@ -136,6 +137,7 @@
     wireCalendar();
     wireAvailability();
     wireWeeklyFlow();
+    wireWeeklyShiftDialog();
     renderSpecialDaysList();
     renderCalendar();
     renderNormalAvailability();
@@ -209,6 +211,71 @@
     renderNormalAvailability();
     $('availabilityDialog').close();
     showToast('Normal availability saved');
+  }
+
+  function wireWeeklyShiftDialog(){
+    $('closeWeeklyShiftDialog')?.addEventListener('click',()=>$('weeklyShiftDialog').close());
+    $('closeWeeklyShiftDialogBottom')?.addEventListener('click',()=>$('weeklyShiftDialog').close());
+    $('weeklyShiftForm')?.addEventListener('submit',saveWeeklyShift);
+  }
+
+  function addWeeklyShiftButtons(){
+    if(!currentSchedule) return;
+    const cards=[...$('scheduleGrid').querySelectorAll('.day-card')];
+    cards.forEach((card,idx)=>{
+      const head=card.querySelector('.day-head');
+      if(!head || head.querySelector('.add-weekly-shift')) return;
+      const date=addDays(currentSchedule.weekStart,idx);
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='add-weekly-shift';
+      btn.textContent='+ Add Shift';
+      btn.addEventListener('click',()=>openWeeklyShiftDialog(date));
+      head.appendChild(btn);
+    });
+  }
+
+  function openWeeklyShiftDialog(date){
+    if(!currentSchedule) return;
+    $('weeklyShiftDate').value=date;
+    $('weeklyShiftLabel').value='';
+    $('weeklyShiftRole').value='dish_runner';
+    $('weeklyShiftStart').value='16:30';
+    const day=DAYS[(fromISODate(date).getDay()+6)%7];
+    $('weeklyShiftEnd').value=state.businessHours?.[day]?.close || '20:00';
+    $('weeklyShiftRequired').checked=true;
+    $('weeklyShiftDialog').showModal();
+  }
+
+  function saveWeeklyShift(e){
+    e.preventDefault();
+    if(!currentSchedule) return;
+    const date=$('weeklyShiftDate').value;
+    const start=$('weeklyShiftStart').value;
+    const end=$('weeklyShiftEnd').value;
+    if(!date || !start || !end){ showToast('Choose a date and shift time'); return; }
+    if(minutes(end)<=minutes(start)){ showToast('Shift end must be after start'); return; }
+
+    const id=uid('ov');
+    const role=$('weeklyShiftRole').value;
+    const label=$('weeklyShiftLabel').value.trim() || (role==='server'?'Extra server':'Dishwasher / Runner');
+    const required=$('weeklyShiftRequired').checked;
+    const override={id,date,role,label,start,end,required};
+    state.specialDateOverrides ||= [];
+    state.specialDateOverrides.push(override);
+    saveState();
+
+    const day=DAYS[(fromISODate(date).getDay()+6)%7];
+    currentSchedule.slots.push({
+      id:`${date}:override:${id}`,
+      templateId:`override:${id}`,
+      date,day,role,label,start,end,required,source:'override'
+    });
+    currentSchedule.slots.sort((a,b)=>a.date.localeCompare(b.date)||minutes(a.start)-minutes(b.start)||a.role.localeCompare(b.role));
+    saveScheduleToHistory(currentSchedule);
+    $('weeklyShiftDialog').close();
+    renderSchedule();
+    showToast(required?'Required shift added — assign someone to cover it':'Optional shift added');
   }
 
   let mobileSelectedDay=0;
@@ -365,6 +432,19 @@
     $('tab-'+name)?.classList.add('active');
   }
 
+  function requiredScheduleGaps(){
+    if(!currentSchedule) return [];
+    return currentSchedule.slots.filter(slot=>
+      slot.required && !currentSchedule.assignments.some(a=>a.slotId===slot.id)
+    );
+  }
+
+  function requiredGapSummary(gaps){
+    return gaps.slice(0,6).map(slot=>
+      `${DAY_LABEL[slot.day]} ${fmtTime(slot.start)}–${fmtTime(slot.end)} · ${slot.label}`
+    ).join('\n');
+  }
+
   function handleWeeklyFlowNext(){
     const step=WEEKLY_FLOW_STEPS[weeklyFlowStep];
     if(step.action==='generate'){
@@ -373,7 +453,33 @@
       setTimeout(renderWeeklyFlow,60);
       return;
     }
+
+    if(weeklyFlowStep===5){
+      const gaps=requiredScheduleGaps();
+      if(gaps.length){
+        const extra=gaps.length>6 ? `\n…and ${gaps.length-6} more required gap${gaps.length-6===1?'':'s'}.` : '';
+        const proceed=confirm(
+          `There ${gaps.length===1?'is':'are'} ${gaps.length} required uncovered shift${gaps.length===1?'':'s'}:\n\n${requiredGapSummary(gaps)}${extra}\n\nContinue to Output & Share with these gaps still open?`
+        );
+        if(!proceed){
+          showToast('Finish the required gaps before continuing');
+          return;
+        }
+      }
+    }
+
     if(step.action==='finish'){
+      const gaps=requiredScheduleGaps();
+      if(gaps.length){
+        const proceed=confirm(
+          `This schedule still has ${gaps.length} required uncovered shift${gaps.length===1?'':'s'}. Finish the weekly setup anyway?`
+        );
+        if(!proceed){
+          weeklyFlowStep=5;
+          renderWeeklyFlow();
+          return;
+        }
+      }
       endWeeklyFlow(true);
       return;
     }
@@ -423,6 +529,15 @@
       const events=calendarEventsBetween(weekStart,weekEnd);
       if(events.length){
         $('weeklyFlowText').textContent=`${step.text} This week currently has ${events.length} calendar event${events.length===1?'':'s'} to review.`;
+      }
+    }
+
+    if(weeklyFlowStep===5){
+      const gaps=requiredScheduleGaps();
+      if(gaps.length){
+        $('weeklyFlowText').textContent=`Review the schedule before output. There ${gaps.length===1?'is':'are'} still ${gaps.length} required uncovered shift${gaps.length===1?'':'s'}. Add or assign shifts as needed. Tap Next only when you are ready to continue.`;
+      }else{
+        $('weeklyFlowText').textContent='All required shifts are covered. Review hours and assignments, add any extra dishwasher, runner, or server shifts needed, then tap Next.';
       }
     }
 
