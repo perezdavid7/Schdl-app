@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.5.0';
+  const V03='0.5.1';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -278,8 +278,8 @@
     },
     {
       tab:'availability',
-      title:'Time Off & Temporary Changes',
-      text:'Enter vacations, requested time off, appointments, school conflicts, or temporary extra availability for this week.',
+      title:'Requested Time Off',
+      text:'Enter any requested day off, vacation, appointment, school conflict, or other temporary availability change for this week. If nobody requested time off, just tap Next.',
       target:'exceptionForm'
     },
     {
@@ -324,15 +324,24 @@
   }
 
   function startWeeklyFlow(){
-    if(!$('weekDate')?.value){
-      $('weekDate').value=mondayOf(toISODate(new Date()));
-    }
+    const today=toISODate(new Date());
+    const currentMonday=mondayOf(today);
+    const nextMonday=addDays(currentMonday,7);
+    const selected=$('weekDate')?.value || '';
+
+    // Weekly setup is for the upcoming schedule. If the picker is still on
+    // the app's normal current-week default, advance it to next week.
+    const weekStart=(!selected || selected===currentMonday)
+      ? nextMonday
+      : mondayOf(selected);
+
+    $('weekDate').value=weekStart;
     weeklyFlowActive=true;
     weeklyFlowStep=0;
-    const weekStart=$('weekDate').value;
     const end=addDays(weekStart,6);
-    if($('exceptionStartDate') && !$('exceptionStartDate').value) $('exceptionStartDate').value=weekStart;
-    if($('exceptionEndDate') && !$('exceptionEndDate').value) $('exceptionEndDate').value=end;
+    if($('exceptionStartDate')) $('exceptionStartDate').value=weekStart;
+    if($('exceptionEndDate')) $('exceptionEndDate').value=end;
+    if($('exceptionType')) $('exceptionType').value='unavailable';
     renderWeeklyFlow();
   }
 
