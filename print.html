@@ -11,6 +11,9 @@
     body{margin:0;padding:18px}
     .actions{max-width:1100px;margin:0 auto 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .actions p{margin:0;color:#4b5563;font-size:14px}
+    .action-buttons{display:flex;gap:8px;flex-wrap:wrap}
+    button.secondary{background:white;color:#1f2937;border:1px solid #cbd5e1}
+    .actions .export-status{width:100%;font-size:12px;color:#166534}
     button{border:0;border-radius:10px;padding:11px 16px;font:700 14px Arial,Helvetica,sans-serif;background:#1f2937;color:#fff;cursor:pointer}
     .sheet{max-width:1100px;margin:0 auto;background:#fff;padding:22px;border:1px solid #d1d5db;border-radius:12px}
     h1{text-align:center;margin:0 0 4px;font-size:26px}
@@ -41,7 +44,12 @@
 <body>
   <div class="actions">
     <p>Printable schedule preview. Choose Print Schedule to print from this device or save as PDF.</p>
-    <button id="printButton" type="button">Print Schedule</button>
+    <div class="action-buttons">
+      <button id="printButton" type="button">Print Schedule</button>
+      <button id="savePdfButton" class="secondary" type="button">Save PDF</button>
+      <button id="sharePdfButton" class="secondary" type="button">Share PDF</button>
+    </div>
+    <p id="exportStatus" class="export-status" role="status" aria-live="polite" hidden></p>
   </div>
   <main id="sheet" class="sheet" hidden>
     <h1>Weekly Schedule</h1>
@@ -55,6 +63,135 @@
   <div id="error" class="error" hidden>That schedule link is missing or invalid. Please share a new schedule link from the Schedule App.</div>
   <script>
     (function(){
+      let scheduleData=null;
+      function pdfAscii(value){
+  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[–—]/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/[^\x20-\x7E]/g,'?');
+}
+
+function pdfEscape(value){return pdfAscii(value).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')}
+
+function pdfText(x,y,size,value,bold=false,align='left'){
+  const raw=pdfAscii(value),safe=pdfEscape(raw);let tx=x;
+  const estimated=raw.length*size*.51;
+  if(align==='center')tx-=estimated/2;
+  if(align==='right')tx-=estimated;
+  return `BT /${bold?'F2':'F1'} ${size} Tf 1 0 0 1 ${tx.toFixed(2)} ${y.toFixed(2)} Tm (${safe}) Tj ET\n`;
+}
+
+function pdfLine(x1,y1,x2,y2,width=.65){return `${width} w ${x1.toFixed(2)} ${y1.toFixed(2)} m ${x2.toFixed(2)} ${y2.toFixed(2)} l S\n`}
+
+function pdfFillRect(x,y,w,h,gray=.94){return `${gray} g ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f 0 g\n`}
+
+function schedulePdfBlob(data){
+  const pageW=792,pageH=612,margin=24,tableW=pageW-margin*2,nameW=116,topY=531,headerH=38,bottomLimit=53;
+  const days=data.days.slice(0,7),dayW=(tableW-nameW)/days.length;
+  const rows=data.rows.map(row=>({
+    name:String(row.name||''),
+    cells:days.map((_,i)=>Array.isArray(row.cells?.[i])?row.cells[i].map(String):[])
+  }));
+  const rowHeight=row=>Math.max(36,20+Math.max(1,...row.cells.map(c=>c.length))*9);
+  const pages=[];let page=[],used=0;
+  for(const row of rows){
+    const height=rowHeight(row);
+    if(page.length && used+height>topY-headerH-bottomLimit){pages.push(page);page=[];used=0;}
+    page.push(row);used+=height;
+  }
+  if(page.length||!pages.length)pages.push(page);
+  const contents=pages.map((group,pageIndex)=>{
+    let out='';
+    out+=pdfText(pageW/2,578,18,'Weekly Schedule',true,'center');
+    out+=pdfText(pageW/2,559,9,`${data.restaurant||'El Mexican Restaurant'} - Week of ${formatWeekStart(data.weekStart)}`,false,'center');
+    if(pages.length>1)out+=pdfText(pageW-margin,559,8,`Page ${pageIndex+1} of ${pages.length}`,false,'right');
+    const bottomY=topY-headerH-group.reduce((n,row)=>n+rowHeight(row),0);
+    out+=pdfFillRect(margin,topY-headerH,tableW,headerH);
+    const xs=[margin,margin+nameW];
+    for(let d=1;d<=days.length;d++)xs.push(margin+nameW+dayW*d);
+    xs.forEach(x=>{out+=pdfLine(x,topY,x,bottomY)});
+    out+=pdfLine(margin,topY,margin+tableW,topY);
+    out+=pdfLine(margin,topY-headerH,margin+tableW,topY-headerH);
+    out+=pdfText(margin+8,topY-23,9,'Name',true);
+    days.forEach((day,i)=>{
+      const center=margin+nameW+dayW*i+dayW/2;
+      out+=pdfText(center,topY-16,8,day.label||'',true,'center');
+      out+=pdfText(center,topY-29,7,day.dateLabel||'',false,'center');
+    });
+    let yTop=topY-headerH;
+    group.forEach(row=>{
+      const height=rowHeight(row),bottom=yTop-height;
+      out+=pdfLine(margin,bottom,margin+tableW,bottom);
+      const font=Math.max(6.2,Math.min(8.5,(nameW-12)/(Math.max(1,pdfAscii(row.name).length)*.51)));
+      out+=pdfText(margin+6,yTop-height/2+3,font,row.name,true);
+      row.cells.forEach((cell,i)=>{
+        const center=margin+nameW+dayW*i+dayW/2;
+        cell.forEach((shift,k)=>{out+=pdfText(center,yTop-14-k*9,6.7,shift,false,'center')});
+      });
+      yTop=bottom;
+    });
+    out+=pdfText(margin,31,7,'Times shown are scheduled work hours.');
+    return out;
+  });
+  const encoder=new TextEncoder(),objects=[];
+  objects[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objects[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  objects[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+  const pageRefs=[];
+  contents.forEach((content,i)=>{
+    const p=5+i*2,c=p+1;pageRefs.push(`${p} 0 R`);
+    objects[p]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${c} 0 R >>`;
+    objects[c]=`<< /Length ${encoder.encode(content).length} >>\nstream\n${content}\nendstream`;
+  });
+  objects[2]=`<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${contents.length} >>`;
+  let pdf='%PDF-1.4\n% Schedule App PDF\n';const offsets=[0];
+  for(let i=1;i<objects.length;i++){offsets[i]=encoder.encode(pdf).length;pdf+=`${i} 0 obj\n${objects[i]}\nendobj\n`;}
+  const xref=encoder.encode(pdf).length;
+  pdf+=`xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for(let i=1;i<objects.length;i++)pdf+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
+  pdf+=`trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return new Blob([encoder.encode(pdf)],{type:'application/pdf'});
+}
+
+function schedulePdfFilename(data){
+  const week=/^\d{4}-\d{2}-\d{2}$/.test(data.weekStart||'')?data.weekStart:'schedule';
+  return `El_Mexican_Schedule_${week}.pdf`;
+}
+
+function showExportStatus(message){
+  const status=document.getElementById('exportStatus');
+  status.hidden=false;status.textContent=message;
+}
+
+function downloadSchedulePdf(blob,filename){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+
+function saveScheduleAsPdf(){
+  if(!scheduleData)return;
+  try{
+    downloadSchedulePdf(schedulePdfBlob(scheduleData),schedulePdfFilename(scheduleData));
+    showExportStatus('PDF saved to your downloads. You can attach it to an email.');
+  }catch(err){showExportStatus('Could not create the PDF. Use Print Schedule and choose Save as PDF.');}
+}
+
+async function shareSchedulePdf(){
+  if(!scheduleData)return;
+  try{
+    const blob=schedulePdfBlob(scheduleData),filename=schedulePdfFilename(scheduleData);
+    if(typeof navigator.share==='function' && typeof File==='function'){
+      const file=new File([blob],filename,{type:'application/pdf'});
+      if(typeof navigator.canShare!=='function'||navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({title:`El Mexican schedule - ${scheduleData.weekStart}`,text:'Weekly work schedule PDF attached.',files:[file]});
+          showExportStatus('PDF handed to your sharing app.');
+          return;
+        }catch(err){if(err?.name==='AbortError')return;}
+      }
+    }
+    downloadSchedulePdf(blob,filename);
+    showExportStatus('PDF downloaded. This browser cannot share the attachment directly; attach the saved file to your email.');
+  }catch(err){showExportStatus('Could not share the PDF. Try Save PDF, then attach it to an email.');}
+}
       function decodePayload(){
         const prefix='#schedule=';
         if(!location.hash.startsWith(prefix)) throw new Error('Missing schedule');
@@ -71,7 +208,8 @@
       }
       try{
         const data=decodePayload();
-        if(!Array.isArray(data.days)||!Array.isArray(data.rows)) throw new Error('Bad schedule');
+        if(!Array.isArray(data.days)||!data.days.length||!Array.isArray(data.rows)) throw new Error('Bad schedule');
+        scheduleData=data;
         document.getElementById('subtitle').textContent=(data.restaurant||'El Mexican Restaurant')+' · Week of '+formatWeekStart(data.weekStart);
         const header=document.getElementById('headerRow');
         data.days.forEach(day=>{
@@ -105,6 +243,9 @@
         document.getElementById('error').hidden=false;
       }
       document.getElementById('printButton').addEventListener('click',()=>window.print());
+      document.getElementById('savePdfButton').addEventListener('click',saveScheduleAsPdf);
+      document.getElementById('sharePdfButton').addEventListener('click',shareSchedulePdf);
+      if(!scheduleData)document.querySelectorAll('.action-buttons button').forEach(button=>button.disabled=true);
     })();
   </script>
 </body>
