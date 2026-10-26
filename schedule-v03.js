@@ -1,6 +1,6 @@
 /* Schedule App V0.3 — print grid, employee sharing, special-days calendar */
 (function(){
-  const V03='0.5.7';
+  const V03='0.5.8';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   let calendarCursor=null;
 
@@ -562,6 +562,7 @@
   }
 
   function wirePrintAndShare(){
+    $('printCurrentBtn')?.addEventListener('click',openCurrentPrintPreview);
     const oldPrint=$('printBtn');
     if(oldPrint){
       const btn=oldPrint.cloneNode(true);
@@ -683,12 +684,30 @@
     return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
 
-  async function sharePrintableSchedule(){
-    if(!currentSchedule){ showToast('Generate a schedule first'); return; }
+  function printableScheduleUrl(){
     const payload=buildPrintableSchedulePayload();
     const encoded=encodePrintablePayload(payload);
     const base=new URL('print.html',window.location.href);
-    const url=`${base.origin}${base.pathname}#schedule=${encoded}`;
+    return `${base.origin}${base.pathname}#schedule=${encoded}`;
+  }
+
+  function openCurrentPrintPreview(){
+    if(!currentSchedule){ showToast('Generate a schedule first'); return; }
+    // Preserve the exact edits on screen before opening a freshly built print view.
+    saveScheduleToHistory(currentSchedule);
+    const url=printableScheduleUrl();
+    const printTab=window.open(url,'_blank');
+    if(printTab){
+      try{ printTab.opener=null; }catch(_){}
+    }else{
+      // A blocked pop-up should not stop printing on a phone.
+      window.location.assign(url);
+    }
+  }
+
+  async function sharePrintableSchedule(){
+    if(!currentSchedule){ showToast('Generate a schedule first'); return; }
+    const url=printableScheduleUrl();
     const title=`El Mexican weekly schedule - ${currentSchedule.weekStart}`;
     const text=`Weekly schedule for the week of ${fmtDate(currentSchedule.weekStart,{month:'long',day:'numeric',year:'numeric'})}. Open this link on the work computer and choose Print Schedule.\n\n${url}`;
     try{
