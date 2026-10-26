@@ -1,5 +1,5 @@
-const CACHE='schedule-app-v0.5.7';
-const SHELL=['./','./index.html','./styles.css?v=0.5.7','./app.js?v=0.5.7','./rules-editor.js?v=0.5.7','./schedule-v03.js?v=0.5.7','./print.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
+const CACHE='schedule-app-v0.5.8';
+const SHELL=['./','./index.html','./styles.css?v=0.5.8','./app.js?v=0.5.8','./rules-editor.js?v=0.5.8','./schedule-v03.js?v=0.5.8','./print.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',event=>
   event.waitUntil(
@@ -34,14 +34,15 @@ self.addEventListener('fetch',event=>{
   }
 
   if(event.request.mode==='navigate'){
+    const fallbackPage=url.pathname.endsWith('/print.html') ? './print.html' : './index.html';
     event.respondWith(
       fetch(event.request,{cache:'no-store'})
         .then(res=>{
           const copy=res.clone();
-          caches.open(CACHE).then(c=>c.put('./index.html',copy));
+          caches.open(CACHE).then(c=>c.put(fallbackPage,copy));
           return res;
         })
-        .catch(()=>caches.match('./index.html'))
+        .catch(()=>caches.match(fallbackPage))
     );
     return;
   }
