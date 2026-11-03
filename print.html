@@ -14,6 +14,7 @@
     .action-buttons{display:flex;gap:8px;flex-wrap:wrap}
     button.secondary{background:white;color:#1f2937;border:1px solid #cbd5e1}
     .actions .export-status{width:100%;font-size:12px;color:#166534}
+    .browser-note{width:100%;font-size:12px;color:#4b5563;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:9px 10px}
     button{border:0;border-radius:10px;padding:11px 16px;font:700 14px Arial,Helvetica,sans-serif;background:#1f2937;color:#fff;cursor:pointer}
     .sheet{max-width:1100px;margin:0 auto;background:#fff;padding:22px;border:1px solid #d1d5db;border-radius:12px}
     h1{text-align:center;margin:0 0 4px;font-size:26px}
@@ -47,9 +48,11 @@
     <div class="action-buttons">
       <button id="printButton" type="button">Print Schedule</button>
       <button id="savePdfButton" class="secondary" type="button">Save PDF</button>
+      <button id="openPdfButton" class="secondary" type="button">Open PDF</button>
       <button id="sharePdfButton" class="secondary" type="button">Share PDF</button>
     </div>
     <p id="exportStatus" class="export-status" role="status" aria-live="polite" hidden></p>
+    <p class="browser-note">If this page opened inside Gmail, Messages, WhatsApp, or another in-app browser and Print/Save does nothing, use the browser menu and choose <strong>Open in Chrome</strong> or <strong>Open in Samsung Internet</strong>. You can also tap <strong>Open PDF</strong> here and use the PDF viewer's download or share controls.</p>
   </div>
   <main id="sheet" class="sheet" hidden>
     <h1>Weekly Schedule</h1>
@@ -163,15 +166,45 @@ function showExportStatus(message){
 function downloadSchedulePdf(blob,filename){
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),10000);
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+function openSchedulePdf(){
+  if(!scheduleData)return;
+  try{
+    const blob=schedulePdfBlob(scheduleData);
+    const url=URL.createObjectURL(blob);
+    const opened=window.open(url,'_blank');
+    if(!opened){
+      window.location.href=url;
+      return;
+    }
+    showExportStatus('PDF opened. Use the PDF viewer download, print, or share controls.');
+    setTimeout(()=>URL.revokeObjectURL(url),120000);
+  }catch(err){
+    showExportStatus('Could not open the PDF in this browser. Try opening this schedule link in Chrome or Samsung Internet.');
+  }
 }
 
 function saveScheduleAsPdf(){
   if(!scheduleData)return;
   try{
     downloadSchedulePdf(schedulePdfBlob(scheduleData),schedulePdfFilename(scheduleData));
-    showExportStatus('PDF saved to your downloads. You can attach it to an email.');
-  }catch(err){showExportStatus('Could not create the PDF. Use Print Schedule and choose Save as PDF.');}
+    showExportStatus('Download requested. If no file appears in Downloads, tap Open PDF and save it from the PDF viewer.');
+  }catch(err){
+    showExportStatus('Could not start the download. Tap Open PDF instead, or open this schedule link in Chrome or Samsung Internet.');
+  }
+}
+
+function printSchedule(){
+  try{
+    window.print();
+    setTimeout(()=>{
+      showExportStatus('If no print screen opened, use Open PDF or open this link in Chrome/Samsung Internet and print from there.');
+    },700);
+  }catch(err){
+    showExportStatus('This browser did not open printing. Use Open PDF or open the link in Chrome/Samsung Internet.');
+  }
 }
 
 async function shareSchedulePdf(){
@@ -188,8 +221,11 @@ async function shareSchedulePdf(){
         }catch(err){if(err?.name==='AbortError')return;}
       }
     }
-    downloadSchedulePdf(blob,filename);
-    showExportStatus('PDF downloaded. This browser cannot share the attachment directly; attach the saved file to your email.');
+    showExportStatus('This browser cannot share the PDF file directly. Opening the PDF instead so you can use the viewer share button.');
+    const url=URL.createObjectURL(blob);
+    const opened=window.open(url,'_blank');
+    if(!opened) window.location.href=url;
+    else setTimeout(()=>URL.revokeObjectURL(url),120000);
   }catch(err){showExportStatus('Could not share the PDF. Try Save PDF, then attach it to an email.');}
 }
       function decodePayload(){
@@ -242,8 +278,9 @@ async function shareSchedulePdf(){
       }catch(err){
         document.getElementById('error').hidden=false;
       }
-      document.getElementById('printButton').addEventListener('click',()=>window.print());
+      document.getElementById('printButton').addEventListener('click',printSchedule);
       document.getElementById('savePdfButton').addEventListener('click',saveScheduleAsPdf);
+      document.getElementById('openPdfButton').addEventListener('click',openSchedulePdf);
       document.getElementById('sharePdfButton').addEventListener('click',shareSchedulePdf);
       if(!scheduleData)document.querySelectorAll('.action-buttons button').forEach(button=>button.disabled=true);
     })();
